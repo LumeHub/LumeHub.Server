@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34302.71
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LumeHub.Api", "src\LumeHub.Api\LumeHub.Api.csproj", "{4B4BB6B0-E6FA-4741-A547-27358A6BB2BB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4B4BB6B0-E6FA-4741-A547-27358A6BB2BB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4B4BB6B0-E6FA-4741-A547-27358A6BB2BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4B4BB6B0-E6FA-4741-A547-27358A6BB2BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4B4BB6B0-E6FA-4741-A547-27358A6BB2BB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {345FFFDA-304F-4EC7-8827-D5FCC3CB47D6}
+	EndGlobalSection
+EndGlobal
