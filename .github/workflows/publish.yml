@@ -25,13 +25,8 @@ jobs:
         mkdir -p ./lumehub-api
         cp -r ./src/LumeHub.Api/bin/Release/net8.0/linux-arm/publish/* ./lumehub-api
 
-    - name: Create artifact
-      uses: montudor/action-zip@v1
-      with:
-        args: 'zip -qq -r lumehub-api.zip lumehub-api'
-
     - name: Upload artifact
       uses: actions/upload-artifact@v2
       with:
         name: lumehub-api
-        path: lumehub-api.zip
+        path: ./lumehub-api
