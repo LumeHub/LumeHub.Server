@@ -1,15 +1,17 @@
 using FastEndpoints.Swagger;
-using FastEndpoints.Security;
+using ApiLocksmith.Core.Extensions;
+using ApiLocksmith.Swagger.FastEndpoints.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
+const string authSectionKey = "ApiKeySettings";
 
 // Add services to the container.
 
 builder.Services
+    .AddAuthorization()
     .AddFastEndpoints()
-    .SwaggerDocument()
-    .AddJWTBearerAuth("Token")
-    .AddAuthorization();
+    .AddApiKeyAuthenticationScheme(builder.Configuration, authSectionKey)
+    .AddSwaggerDocumentWithApiKeyAuth(builder.Configuration, authSectionKey);
 
 var app = builder.Build();
 

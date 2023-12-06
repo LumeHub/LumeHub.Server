@@ -2,11 +2,7 @@
 
 public sealed class Endpoint : Endpoint<Request, Response, Mapper>
 {
-    public override void Configure()
-    {
-        Get("example");
-        AllowAnonymous();
-    }
+    public override void Configure() => Get("example");
 
     public override async Task HandleAsync(Request req, CancellationToken ct)
     {
