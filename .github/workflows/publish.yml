@@ -1,0 +1,32 @@
+name: Publish
+
+on:
+  release:
+    types:
+      - created
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Build and publish
+      run: |
+        dotnet publish -c Release --self-contained -r linux-arm ./src/LumeHub.Api
+        mkdir -p ./lumehub-api
+        cp -r ./src/LumeHub.Api/bin/Release/net8.0/linux-arm/publish/* ./lumehub-api
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: lumehub-api
+        path: ./lumehub-api
