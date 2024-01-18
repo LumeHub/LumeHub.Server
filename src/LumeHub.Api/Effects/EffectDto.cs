@@ -4,9 +4,9 @@ namespace LumeHub.Api.Effects;
 
 public class EffectDto
 {
-    public string Id { get; set; } = Guid.NewGuid().ToString();
-    public required string Name { get; set; }
-    public required string Data { get; set; }
+    public string Id { get; init; } = Guid.NewGuid().ToString();
+    public required string Name { get; init; }
+    public required string Data { get; init; }
 
     public static implicit operator Effect?(EffectDto dto)
     {
