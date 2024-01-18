@@ -1,6 +1,14 @@
 using FastEndpoints.Swagger;
 using ApiLocksmith.Core.Extensions;
 using ApiLocksmith.Swagger.FastEndpoints.Extensions;
+using LumeHub.Core.LedControl;
+using Effects = LumeHub.Api.Effects;
+
+#if DEBUG
+using LumeHub.Core.LedControl.Debug;
+#else
+using LumeHub.Core.LedControl.Ws2801;
+#endif
 
 var builder = WebApplication.CreateBuilder(args);
 const string authSectionKey = "ApiKeySettings";
@@ -12,6 +20,19 @@ builder.Services
     .AddFastEndpoints()
     .AddApiKeyAuthenticationScheme(builder.Configuration, authSectionKey)
     .AddSwaggerDocumentWithApiKeyAuth(builder.Configuration, authSectionKey);
+
+var ledControllerSection = builder.Configuration.GetSection("LedControllerSettings");
+#if DEBUG
+builder.Services
+    .Configure<LedControllerOptions>(ledControllerSection)
+    .AddSingleton<LedController, DebugLedController>();
+#else
+builder.Services
+    .Configure<Ws2801LedControllerOptions>(ledControllerSection)
+    .AddSingleton<LedController, Ws2801LedController>();
+#endif
+
+builder.Services.AddScoped<Effects.IRepository, Effects.Repository>();
 
 var app = builder.Build();
 

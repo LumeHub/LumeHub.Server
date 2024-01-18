@@ -14,4 +14,8 @@
     <PackageReference Include="FastEndpoints.Swagger" Version="5.20.1" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\LumeHub.Core\src\LumeHub.Core\LumeHub.Core.csproj" />
+  </ItemGroup>
+
 </Project>
