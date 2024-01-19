@@ -32,7 +32,9 @@ builder.Services
     .AddSingleton<LedController, Ws2801LedController>();
 #endif
 
-builder.Services.AddScoped<Effects.IRepository, Effects.Repository>();
+builder.Services
+    .AddScoped<Effects.IRepository, Effects.Repository>()
+    .AddSingleton<Effects.IManager, Effects.Manager>();
 
 var app = builder.Build();
 
