@@ -9,6 +9,7 @@ public interface IRepository
     public EffectDto Get(string id);
     public void Remove(string id);
     bool Exists(string id);
+    void Update(EffectDto effect);
 }
 public class Repository : IRepository
 {
@@ -17,4 +18,5 @@ public class Repository : IRepository
     public EffectDto Get(string id) => throw new NotImplementedException();
     public void Remove(string id) => throw new NotImplementedException();
     public bool Exists(string id) => throw new NotImplementedException();
+    public void Update(EffectDto effect) => throw new NotImplementedException();
 }
