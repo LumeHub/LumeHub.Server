@@ -7,24 +7,15 @@ namespace LumeHub.Api.Effects;
 public class EffectDto
 {
     [Key]
+    [MaxLength(36)]
     public string Id { get; init; } = Guid.NewGuid().ToString();
     public required string Name { get; set; }
     public required string Data { get; set; }
 
-    public void Apply(LedController ledController)
-    {
-        Effect effect = this!;
-        effect.Apply(ledController);
-    }
+    private Effect? _effect;
+    public Effect Effect => _effect ??= this!;
 
-    public bool IsRepeatingEffect(out RepeatingEffect? repeatingEffect)
-    {
-        repeatingEffect = null;
-        if ((Effect)this! is not RepeatingEffect repeating) return false;
-
-        repeatingEffect = repeating;
-        return true;
-    }
+    public void Apply(LedController ledController) => Effect.Apply(ledController);
 
     public static implicit operator Effect?(EffectDto dto)
     {

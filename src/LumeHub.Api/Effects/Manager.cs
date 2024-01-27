@@ -23,7 +23,7 @@ public sealed class Manager(LedController ledController) : IManager
 
     public void SetEffect(EffectDto effect)
     {
-        ApplyEffect(effect!);
+        ApplyEffect(effect.Effect);
         CurrentEffect = effect;
         IsOn = true;
     }
@@ -41,16 +41,17 @@ public sealed class Manager(LedController ledController) : IManager
 
     public void Toggle(bool state)
     {
-        if (state) ApplyEffect(_offEffect);
-        else CurrentEffect?.Apply(ledController);
+        if (state == IsOn) return;
+        if (state) CurrentEffect?.Apply(ledController);
+        else ApplyEffect(_offEffect);
         IsOn = state;
     }
 
     private void ApplyEffect(Effect effect)
     {
         // If CurrentEffect is set and is repeating effect
-        if (IsOn && (CurrentEffect?.IsRepeatingEffect(out var repeatingEffect) ?? false))
-            repeatingEffect!.Stop();
+        if (IsOn && CurrentEffect?.Effect is RepeatingEffect repeatingEffect)
+            repeatingEffect.Stop();
 
         effect.Apply(ledController);
     }
