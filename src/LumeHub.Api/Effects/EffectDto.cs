@@ -1,10 +1,12 @@
 ﻿using LumeHub.Core.Effects;
 using LumeHub.Core.LedControl;
+using System.ComponentModel.DataAnnotations;
 
 namespace LumeHub.Api.Effects;
 
 public class EffectDto
 {
+    [Key]
     public string Id { get; init; } = Guid.NewGuid().ToString();
     public required string Name { get; set; }
     public required string Data { get; set; }

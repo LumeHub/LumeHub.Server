@@ -2,7 +2,10 @@ using FastEndpoints.Swagger;
 using ApiLocksmith.Core.Extensions;
 using ApiLocksmith.Swagger.FastEndpoints.Extensions;
 using LumeHub.Core.LedControl;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
 using Effects = LumeHub.Api.Effects;
+using LumeHub.Api.Data;
 
 #if DEBUG
 using LumeHub.Core.LedControl.Debug;
@@ -36,6 +39,19 @@ builder.Services
     .AddScoped<Effects.IRepository, Effects.Repository>()
     .AddSingleton<Effects.IManager, Effects.Manager>();
 
+// DbContext
+string folderPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    options.UseSqlite(new SqliteConnectionStringBuilder
+    {
+        DataSource = Path.Combine(folderPath, builder.Configuration.GetConnectionString("DatabaseFileName")!)
+    }.ToString());
+    options.UseLoggerFactory(LoggerFactory.Create(loggerBuilder => loggerBuilder.AddFilter((category, level) =>
+        category == DbLoggerCategory.Database.Command.Name
+        && level == LogLevel.Warning)));
+});
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -43,6 +59,11 @@ var app = builder.Build();
 app.UseAuthentication()
     .UseAuthorization()
     .UseFastEndpoints();
+
+// Migration
+using var scope = app.Services.CreateScope();
+var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+context.Database.Migrate();
 
 if (app.Environment.IsDevelopment())
 {
