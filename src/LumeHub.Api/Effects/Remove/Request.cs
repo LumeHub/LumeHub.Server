@@ -2,6 +2,5 @@
 
 public sealed class Request
 {
-    [QueryParam]
     public required string Id { get; init; }
 }
