@@ -1,5 +1,5 @@
-﻿using LumeHub.Api.Effects;
-using LumeHub.Api.Effects.Current.Set;
+﻿using LumeHub.Server.Effects;
+using LumeHub.Server.Effects.Current.Set;
 
 namespace UnitTests.Effects.Current;
 public sealed class Set

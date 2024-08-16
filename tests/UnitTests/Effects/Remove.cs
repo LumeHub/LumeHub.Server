@@ -1,5 +1,5 @@
-﻿using LumeHub.Api.Effects;
-using LumeHub.Api.Effects.Remove;
+﻿using LumeHub.Server.Effects;
+using LumeHub.Server.Effects.Remove;
 
 namespace UnitTests.Effects;
 

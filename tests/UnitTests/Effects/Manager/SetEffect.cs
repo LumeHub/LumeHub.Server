@@ -1,4 +1,4 @@
-﻿using LumeHub.Api.Effects;
+﻿using LumeHub.Server.Effects;
 using LumeHub.Core.Colors;
 using LumeHub.Core.Effects.Normal;
 using LumeHub.Core.LedControl;
@@ -14,7 +14,7 @@ public sealed class SetEffect
         // Arrange
         var ledController = Substitute.For<LedController>(Options.Create(new LedControllerOptions{ PixelCount = 100 }));
         ledController.SetAllPixel(new RgbColor());
-        var manager = new LumeHub.Api.Effects.Manager(ledController);
+        var manager = new LumeHub.Server.Effects.Manager(ledController);
         var effect = new EffectDto
         {
             Id = Guid.NewGuid().ToString(),

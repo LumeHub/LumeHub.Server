@@ -1,5 +1,5 @@
-﻿using LumeHub.Api.Effects;
-using LumeHub.Api.Effects.Add;
+﻿using LumeHub.Server.Effects;
+using LumeHub.Server.Effects.Add;
 using LumeHub.Core.Colors;
 using LumeHub.Core.Effects.Normal;
 using System.Text.Json;

@@ -1,5 +1,5 @@
-﻿using LumeHub.Api.Effects;
-using LumeHub.Api.Effects.GetAll;
+﻿using LumeHub.Server.Effects;
+using LumeHub.Server.Effects.GetAll;
 
 namespace UnitTests.Effects;
 
