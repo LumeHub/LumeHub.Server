@@ -399,3 +399,6 @@ FodyWeavers.xsd
 
 # direnv
 .direnv
+
+# nix
+result
