@@ -1,22 +1,47 @@
 self: {
     config,
     lib,
+    options,
     pkgs,
     ...
 }: let
     cfg = config.services.lumehub;
     format = pkgs.formats.json {};
-    appSettings = format.generate "appsettings.json" cfg.settings;
+    mergedSettings = lib.recursiveUpdate options.services.lumehub.settings.default cfg.settings;
+    appSettings = format.generate "appsettings.json" mergedSettings;
 in {
     options.services.lumehub = {
         enable = lib.mkEnableOption "lumehub";
-        settings = lib.mkOption {
-            type = format.type;
-            default = {};
-        };
         dataDir = lib.mkOption {
             type = lib.types.path;
             default = "/var/lib/lumehub";
+        };
+        openFirewall = lib.mkEnableOption "open firewall for lumehub";
+        settings = lib.mkOption {
+            type = format.type;
+            default = {
+                Logging.LogLevel = {
+                    Default = "Information";
+                    Microsoft.AspNetCore = "Warning";
+                };
+                AllowedHosts = "*";
+                ConnectionStrings.DatabaseFileName = "LumeHub.Server.db";
+                ApiKeySettings = {
+                    ApiKey = "MySecretApiKey";
+                    ApiKeyHeaderName = "x-api-key";
+                    ApiKeySchemeName = "ApiKey";
+                };
+                LedControllerSettings = {
+                    PixelCount = 100;
+                    BusId = 0;
+                    ClockFrequency = 2000000;
+                };
+            };
+            description = ''
+                Specifies the settings passed to the application, which will be merged with the default configuration.
+                Only the specified values will override the default values, ensuring that all other settings remain unchanged.
+                It is strongly recommended to override the `ApiSettings.ApiKey` value with a secret key.
+            '';
         };
     };
 
@@ -40,5 +65,7 @@ in {
                 "L+ ${cfg.dataDir}/appsettings.json - - - - ${appSettings}"
             ];
         };
+
+        networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [5000];
     };
 }
