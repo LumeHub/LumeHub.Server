@@ -49,10 +49,7 @@ public sealed class Manager(LedController ledController) : IManager
 
     private void ApplyEffect(Effect effect)
     {
-        // If CurrentEffect is set and is repeating effect
-        if (IsOn && CurrentEffect?.Effect is RepeatingEffect repeatingEffect)
-            repeatingEffect.Stop();
-
+        CurrentEffect?.Effect.Stop();
         effect.Apply(ledController);
     }
 }
