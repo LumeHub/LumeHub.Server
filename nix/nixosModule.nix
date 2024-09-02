@@ -17,6 +17,10 @@ in {
             default = "/var/lib/lumehub";
         };
         openFirewall = lib.mkEnableOption "open firewall for lumehub";
+        port = lib.mkOption {
+            type = lib.types.port;
+            default = 5000;
+        };
         settings = lib.mkOption {
             type = format.type;
             default = {
@@ -53,7 +57,7 @@ in {
                 after = ["network.target"];
                 serviceConfig = {
                     Type = "simple";
-                    ExecStart = "${self.packages.${pkgs.system}.default}/bin/LumeHub.Server";
+                    ExecStart = "${self.packages.${pkgs.system}.default}/bin/LumeHub.Server --urls http://0.0.0.0:${toString cfg.port}";
                     WorkingDirectory = cfg.dataDir;
                     Restart = "on-failure";
                 };
@@ -66,6 +70,6 @@ in {
             ];
         };
 
-        networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [5000];
+        networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [cfg.port];
     };
 }
