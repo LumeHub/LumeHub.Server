@@ -1,11 +1,8 @@
-using LumeHub.Core.Colors;
-using LumeHub.Core.Effects.Normal;
-using LumeHub.Core.LedControl;
 using LumeHub.Server.Effects;
 
 namespace LumeHub.Server.Old.State.Off;
 
-class Endpoint(IManager effectManager, LedController ledController) : EndpointWithoutRequest<Dto>
+class Endpoint(IManager effectManager) : EndpointWithoutRequest<Dto>
 {
     public override void Configure()
     {
@@ -15,13 +12,7 @@ class Endpoint(IManager effectManager, LedController ledController) : EndpointWi
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        if (effectManager.IsOn)
-        {
-            var effect = new FadeColor { Color = new RgbColor() };
-            effect.Apply(ledController);
-
-            effectManager.Toggle(false);
-        }
+        if (effectManager.IsOn) effectManager.Toggle(false);
 
         await SendOkAsync(new Dto
         {

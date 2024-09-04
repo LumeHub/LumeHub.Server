@@ -12,8 +12,7 @@ class Endpoint(IManager effectManager) : EndpointWithoutRequest<Dto>
 
     public override async Task HandleAsync(CancellationToken ct)
     {
-        if (!effectManager.IsOn)
-            effectManager.Toggle(true);
+        if (!effectManager.IsOn) effectManager.Toggle(true);
 
         await SendOkAsync(new Dto
         {

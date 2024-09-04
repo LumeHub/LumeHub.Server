@@ -1,6 +1,4 @@
-﻿using LumeHub.Core.Effects;
-
-namespace LumeHub.Server.Effects.Current.Set;
+﻿namespace LumeHub.Server.Effects.Current.Set;
 
 public sealed class Endpoint(IRepository repository, IManager manager) : Endpoint<Request>
 {

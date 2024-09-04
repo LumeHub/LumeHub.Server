@@ -1,7 +1,6 @@
 ﻿using LumeHub.Core.Colors;
 using LumeHub.Core.Effects;
 using LumeHub.Core.Effects.Normal;
-using LumeHub.Core.LedControl;
 using System.Text.Json;
 
 namespace LumeHub.Server.Effects;
@@ -15,7 +14,7 @@ public interface IManager
     void Toggle(bool state);
 }
 
-public sealed class Manager(LedController ledController) : IManager
+public sealed class Manager(QueueingService queueingService) : IManager
 {
     public EffectDto? CurrentEffect { get; private set; }
     public bool IsOn { get; private set; } = true;
@@ -42,14 +41,17 @@ public sealed class Manager(LedController ledController) : IManager
     public void Toggle(bool state)
     {
         if (state == IsOn) return;
-        if (state) CurrentEffect?.Apply(ledController);
+        if (CurrentEffect is null) return;
+
+        if (state) ApplyEffect(CurrentEffect.Effect);
         else ApplyEffect(_offEffect);
+
         IsOn = state;
     }
 
     private void ApplyEffect(Effect effect)
     {
         CurrentEffect?.Effect.Stop();
-        effect.Apply(ledController);
+        queueingService.Enqueue(effect);
     }
 }

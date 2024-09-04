@@ -39,6 +39,10 @@ builder.Services
     .AddScoped<Effects.IRepository, Effects.Repository>()
     .AddSingleton<Effects.IManager, Effects.Manager>();
 
+builder.Services
+    .AddSingleton<Effects.QueueingService>()
+    .AddHostedService<Effects.QueueingService>(provider => provider.GetRequiredService<Effects.QueueingService>());
+
 // DbContext
 string folderPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 builder.Services.AddDbContext<AppDbContext>(options =>
