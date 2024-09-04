@@ -46,6 +46,6 @@ public sealed class Get
 
         // Assert
         statusCode.Should().Be((int)HttpStatusCode.OK);
-        endpoint.Response.Should().BeEquivalentTo(effect);
+        endpoint.Response.Should().BeEquivalentTo(effect, o => o.Excluding(e => e.Effect));
     }
 }

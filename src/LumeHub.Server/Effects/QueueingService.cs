@@ -4,7 +4,7 @@ using System.Collections.Concurrent;
 
 namespace LumeHub.Server.Effects;
 
-public sealed class QueueingService(LedController ledController, ILogger<QueueingService> logger) : BackgroundService
+public class QueueingService(LedController ledController, ILogger<QueueingService> logger) : BackgroundService
 {
     private readonly ConcurrentQueue<Effect> _effectQueue = new();
     private readonly SemaphoreSlim _semaphore = new(1, 1);

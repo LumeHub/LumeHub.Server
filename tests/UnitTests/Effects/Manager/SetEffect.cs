@@ -1,25 +1,28 @@
 ﻿using LumeHub.Server.Effects;
 using LumeHub.Core.Colors;
 using LumeHub.Core.Effects.Normal;
-using LumeHub.Core.LedControl;
-using Microsoft.Extensions.Options;
 using System.Text.Json;
+using LumeHub.Core.LedControl;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace UnitTests.Effects.Manager;
+
 public sealed class SetEffect
 {
     [Fact]
     public void CurrentEffectGetsUpdate_When_FirstEffectIsApplied()
     {
         // Arrange
-        var ledController = Substitute.For<LedController>(Options.Create(new LedControllerOptions{ PixelCount = 100 }));
-        ledController.SetAllPixel(new RgbColor());
-        var manager = new LumeHub.Server.Effects.Manager(ledController);
+        var ledController = Substitute.For<LedController>(Options.Create(new LedControllerOptions { PixelCount = 100 }));
+        var logger = Substitute.For<ILogger<QueueingService>>();
+        var effectQueueingService = Substitute.For<QueueingService>(ledController, logger);
+        var manager = new LumeHub.Server.Effects.Manager(effectQueueingService);
         var effect = new EffectDto
         {
             Id = Guid.NewGuid().ToString(),
             Name = "Test",
-            Data = JsonSerializer.Serialize(new FadeColor{ Color = new RgbColor(123, 45 ,6)})
+            Data = JsonSerializer.Serialize(new FadeColor { Color = new RgbColor(123, 45, 6) })
         };
 
         // Act

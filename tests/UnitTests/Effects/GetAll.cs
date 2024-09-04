@@ -43,6 +43,6 @@ public sealed class GetAll
 
         // Arrange
         endpoint.Response.Effects.Should().HaveCount(2);
-        endpoint.Response.Effects.Should().BeEquivalentTo(effects);
+        endpoint.Response.Effects.Should().BeEquivalentTo(effects, o => o.Excluding(e => e.Effect));
     }
 }

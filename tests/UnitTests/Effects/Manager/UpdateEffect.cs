@@ -1,9 +1,10 @@
 ﻿using LumeHub.Server.Effects;
 using LumeHub.Core.Colors;
 using LumeHub.Core.Effects.Normal;
+using System.Text.Json;
 using LumeHub.Core.LedControl;
 using Microsoft.Extensions.Options;
-using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace UnitTests.Effects.Manager;
 
@@ -14,8 +15,9 @@ public sealed class UpdateEffect
     {
         // Arrange
         var ledController = Substitute.For<LedController>(Options.Create(new LedControllerOptions { PixelCount = 100 }));
-        ledController.SetAllPixel(new RgbColor());
-        var manager = new LumeHub.Server.Effects.Manager(ledController);
+        var logger = Substitute.For<ILogger<QueueingService>>();
+        var effectQueueingService = Substitute.For<QueueingService>(ledController, logger);
+        var manager = new LumeHub.Server.Effects.Manager(effectQueueingService);
         var effect = new FadeColor { Color = new RgbColor(123, 45, 6) };
 
         // Act
@@ -24,7 +26,9 @@ public sealed class UpdateEffect
         // Assert
         manager.CurrentEffect.Should().BeEquivalentTo(new EffectDto
         {
-            Id = "", Name = "", Data = JsonSerializer.Serialize(effect)
+            Id = "",
+            Name = "",
+            Data = JsonSerializer.Serialize(effect)
         });
     }
 
@@ -33,12 +37,15 @@ public sealed class UpdateEffect
     {
         // Arrange
         var ledController = Substitute.For<LedController>(Options.Create(new LedControllerOptions { PixelCount = 100 }));
-        ledController.SetAllPixel(new RgbColor());
-        var manager = new LumeHub.Server.Effects.Manager(ledController);
+        var logger = Substitute.For<ILogger<QueueingService>>();
+        var effectQueueingService = Substitute.For<QueueingService>(ledController, logger);
+        var manager = new LumeHub.Server.Effects.Manager(effectQueueingService);
         var effect = new FadeColor { Color = new RgbColor(123, 45, 6) };
         var effectDto = new EffectDto
         {
-            Id = Guid.NewGuid().ToString(), Name = "Name", Data = JsonSerializer.Serialize(effect)
+            Id = Guid.NewGuid().ToString(),
+            Name = "Name",
+            Data = JsonSerializer.Serialize(effect)
         };
 
         // Act
