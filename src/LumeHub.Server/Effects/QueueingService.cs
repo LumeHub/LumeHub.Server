@@ -4,14 +4,14 @@ using System.Collections.Concurrent;
 
 namespace LumeHub.Server.Effects;
 
-public class QueueingService(LedController ledController, ILogger<QueueingService> logger) : BackgroundService
+public class QueueingService(LedController ledController) : BackgroundService
 {
     private readonly ConcurrentQueue<Effect> _effectQueue = new();
     private readonly SemaphoreSlim _semaphore = new(1, 1);
 
     public void Enqueue(Effect effect)
     {
-        logger.LogInformation("Enqueueing effect {Effect}", effect);
+        _effectQueue.Clear();
         _effectQueue.Enqueue(effect);
     }
 
@@ -33,7 +33,6 @@ public class QueueingService(LedController ledController, ILogger<QueueingServic
         await _semaphore.WaitAsync(stoppingToken);
         try
         {
-            logger.LogInformation("Applying effect {Effect}", effect);
             effect.Apply(ledController);
         }
         finally
