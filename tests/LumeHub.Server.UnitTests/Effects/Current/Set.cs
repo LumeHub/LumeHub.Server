@@ -1,7 +1,7 @@
 ﻿using LumeHub.Server.Effects;
 using LumeHub.Server.Effects.Current.Set;
 
-namespace UnitTests.Effects.Current;
+namespace LumeHub.Server.UnitTests.Effects.Current;
 public sealed class Set
 {
     [Fact]

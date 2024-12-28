@@ -18,7 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\LumeHub.Core\src\LumeHub.Core\LumeHub.Core.csproj" />
+        <ProjectReference Include="../LumeHub.Core/LumeHub.Core.csproj" />
   </ItemGroup>
 
 </Project>

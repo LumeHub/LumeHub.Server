@@ -1,12 +1,11 @@
-﻿using LumeHub.Server.Effects;
-using LumeHub.Core.Colors;
+﻿using LumeHub.Core.Colors;
 using LumeHub.Core.Effects.Normal;
-using System.Text.Json;
 using LumeHub.Core.LedControl;
+using LumeHub.Server.Effects;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
-namespace UnitTests.Effects.Manager;
+namespace LumeHub.Server.UnitTests.Effects.Manager;
 
 public sealed class UpdateEffect
 {

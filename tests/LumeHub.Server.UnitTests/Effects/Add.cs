@@ -1,10 +1,10 @@
-﻿using LumeHub.Server.Effects;
-using LumeHub.Server.Effects.Add;
-using LumeHub.Core.Colors;
+﻿using LumeHub.Core.Colors;
 using LumeHub.Core.Effects.Normal;
+using LumeHub.Server.Effects;
+using LumeHub.Server.Effects.Add;
 using System.Text.Json;
 
-namespace UnitTests.Effects;
+namespace LumeHub.Server.UnitTests.Effects;
 
 public sealed class Add
 {

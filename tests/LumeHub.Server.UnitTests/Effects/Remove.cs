@@ -1,7 +1,7 @@
 ﻿using LumeHub.Server.Effects;
 using LumeHub.Server.Effects.Remove;
 
-namespace UnitTests.Effects;
+namespace LumeHub.Server.UnitTests.Effects;
 
 public sealed class Remove
 {

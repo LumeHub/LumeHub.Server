@@ -1,7 +1,7 @@
 ﻿using LumeHub.Server.Effects;
 using LumeHub.Server.Effects.GetAll;
 
-namespace UnitTests.Effects;
+namespace LumeHub.Server.UnitTests.Effects;
 
 public sealed class GetAll
 {
