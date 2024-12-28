@@ -15,8 +15,7 @@ public sealed class UpdateEffect
     {
         // Arrange
         var ledController = Substitute.For<LedController>(Options.Create(new LedControllerOptions { PixelCount = 100 }));
-        var logger = Substitute.For<ILogger<QueueingService>>();
-        var effectQueueingService = Substitute.For<QueueingService>(ledController, logger);
+        var effectQueueingService = Substitute.For<QueueingService>(ledController);
         var manager = new LumeHub.Server.Effects.Manager(effectQueueingService);
         var effect = new FadeColor { Color = new RgbColor(123, 45, 6) };
 
@@ -37,8 +36,7 @@ public sealed class UpdateEffect
     {
         // Arrange
         var ledController = Substitute.For<LedController>(Options.Create(new LedControllerOptions { PixelCount = 100 }));
-        var logger = Substitute.For<ILogger<QueueingService>>();
-        var effectQueueingService = Substitute.For<QueueingService>(ledController, logger);
+        var effectQueueingService = Substitute.For<QueueingService>(ledController);
         var manager = new LumeHub.Server.Effects.Manager(effectQueueingService);
         var effect = new FadeColor { Color = new RgbColor(123, 45, 6) };
         var effectDto = new EffectDto
