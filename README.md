@@ -25,7 +25,7 @@ dotnet build
 To build the nix package, run the following command:
 
 ```bash
-nix build .\?submodules=1
+nix build
 ```
 
 ## Running
@@ -39,7 +39,8 @@ dotnet run --project src/LumeHub.Server
 To run the nix package, run the following command:
 
 ```bash
-nix run .\?submodules=1
+cd src/LumeHub.Server
+nix run
 ```
 
 ## Testing
@@ -57,9 +58,11 @@ nix flake check
 ```
 
 ## Updating Dependencies
+
 To update the nuget dependencies, needed for the nix package, run the following command:
 
 ```bash
-nix build .\?submodules=1#default.passthru.fetch-deps && ./result
+nix build .#default.passthru.fetch-deps && ./result
 ```
+
 And then copy the output to `nix/deps.nix`.
