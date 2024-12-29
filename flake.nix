@@ -1,6 +1,11 @@
 {
     description = "LumeHub.Server flake";
 
+    nixConfig = {
+        extra-substituters = ["https://anders130.cachix.org"];
+        extra-trusted-public-keys = ["anders130.cachix.org-1:mCAq0L6Ld3lG7gxJVHGzKr2rqUZ5qs5YoERxoSjMOXs="];
+    };
+
     inputs = {
         nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
         flake-parts.url = "github:hercules-ci/flake-parts";
