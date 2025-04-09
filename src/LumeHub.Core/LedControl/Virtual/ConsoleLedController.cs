@@ -1,9 +1,9 @@
 using LumeHub.Core.Colors;
 using Microsoft.Extensions.Options;
 
-namespace LumeHub.Core.LedControl.Console;
+namespace LumeHub.Core.LedControl.Virtual;
 
-public sealed class ConsoleLedController(IOptions<LedControllerOptions> options) : LedController(options)
+public sealed class VirtualLedController(IOptions<LedControllerOptions> options) : LedController(options)
 {
     private readonly RgbColor[] _leds = new RgbColor[options.Value.PixelCount];
 

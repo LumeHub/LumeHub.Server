@@ -8,7 +8,7 @@ using Effects = LumeHub.Server.Effects;
 using LumeHub.Server.Data;
 
 #if DEBUG
-using LumeHub.Core.LedControl.Console;
+using LumeHub.Core.LedControl.Virtual;
 #else
 using LumeHub.Core.LedControl.Ws2801;
 #endif
@@ -28,7 +28,7 @@ var ledControllerSection = builder.Configuration.GetSection("LedControllerSettin
 #if DEBUG
 builder.Services
     .Configure<LedControllerOptions>(ledControllerSection)
-    .AddSingleton<LedController, ConsoleLedController>();
+    .AddSingleton<LedController, VirtualLedController>();
 #else
 builder.Services
     .Configure<Ws2801LedControllerOptions>(ledControllerSection)
