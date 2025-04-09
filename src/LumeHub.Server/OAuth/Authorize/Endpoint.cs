@@ -1,6 +1,8 @@
-namespace LumeHub.Server.OAuth;
+using Microsoft.AspNetCore.WebUtilities;
 
-public class AuthorizeEndpoint : EndpointWithoutRequest
+namespace LumeHub.Server.OAuth.Authorize;
+
+public class Endpoint : Endpoint<Request>
 {
     public override void Configure()
     {
@@ -8,17 +10,13 @@ public class AuthorizeEndpoint : EndpointWithoutRequest
         AllowAnonymous();
     }
 
-    public override async Task HandleAsync(CancellationToken ct)
+    public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        // parse the redirect params
-        var redirectUri = HttpContext.Request.Query["redirect_uri"].ToString();
-        var state = HttpContext.Request.Query["state"].ToString();
-        var clientId = HttpContext.Request.Query["client_id"].ToString();
-
-        // simulate login + redirect
-        var code = "mock-auth-code"; // any string is okay
-        var uri = $"{redirectUri}?code={code}&state={state}";
-
-        await SendRedirectAsync(uri, permanent: false, cancellation: ct);
+        string uri = QueryHelpers.AddQueryString(req.RedirectUri, new Dictionary<string, string?>
+        {
+            ["code"] = Guid.NewGuid().ToString("N"),
+            ["state"] = req.State
+        });
+        await SendRedirectAsync(uri, isPermanant: false, cancellation: ct);
     }
 }
