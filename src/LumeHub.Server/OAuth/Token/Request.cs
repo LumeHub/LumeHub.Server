@@ -10,13 +10,4 @@ public sealed class Request
     
     [BindFrom("refresh_token")]
     public string? RefreshToken { get; init; }
-
-    public bool IsValid()
-    {
-        if (GrantType == "refresh_token" && string.IsNullOrEmpty(RefreshToken))
-        {
-            return false; // RefreshToken is required for the refresh_token grant type
-        }
-        return true;
-    }
 }

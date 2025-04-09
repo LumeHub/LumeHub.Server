@@ -29,7 +29,7 @@ public class Endpoint : Endpoint<Request, Response>
                 await SendAsync(new Response
                 {
                     AccessToken = "refreshed-access-token",
-                    RefreshToken = req.RefreshToken
+                    RefreshToken = req.RefreshToken!
                 }, cancellation: ct);
                 break;
             default:
