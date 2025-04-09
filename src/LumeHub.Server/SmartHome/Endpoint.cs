@@ -2,95 +2,109 @@ using LumeHub.Server.Effects;
 
 namespace LumeHub.Server.SmartHome;
 
-public sealed class Endpoint(IManager effectManager) : Endpoint<SmartHomeRequest, SmartHomeResponse>
+public sealed class Endpoint(IManager effectManager) : Endpoint<Request, Response>
 {
+    private const string Sync = "action.devices.SYNC";
+    private const string Query = "action.devices.QUERY";
+    private const string Execute = "action.devices.EXECUTE";
+    private const string OnOff = "action.devices.commands.OnOff";
+    private const string DeviceId = "led-strip";
+    
     public override void Configure()
     {
         Post("smarthome");
         AllowAnonymous();
     }
 
-    public override async Task HandleAsync(SmartHomeRequest req, CancellationToken ct)
+    public override async Task HandleAsync(Request req, CancellationToken ct)
     {
-        var intent = req.Inputs?.FirstOrDefault()?.Intent;
-        var requestId = req.RequestId;
+        string? intent = req.Inputs?.FirstOrDefault()?.Intent;
+        string requestId = req.RequestId;
 
-        SmartHomeResponse response = intent switch
+        if (string.IsNullOrWhiteSpace(intent))
         {
-            "action.devices.SYNC" => new()
+            await SendAsync(new Response
             {
                 RequestId = requestId,
-                Payload = new
-                {
-                    agentUserId = "123",
-                    devices = new[]
-                    {
-                        new
-                        {
-                            id = "led-strip",
-                            type = "action.devices.types.LIGHT",
-                            traits = new[] { "action.devices.traits.OnOff" },
-                            name = new { name = "LED Strip" },
-                            willReportState = false,
-                            deviceInfo = new
-                            {
-                                manufacturer = "LumeHub",
-                                model = "LEDv1"
-                            }
-                        }
-                    }
-                }
-            },
+                Payload = new { error = "Missing intent" }
+            }, cancellation: ct);
+            return;
+        }
 
-            "action.devices.QUERY" => new()
-            {
-                RequestId = requestId,
-                Payload = new
-                {
-                    devices = new Dictionary<string, object>
-                    {
-                        { "led-strip", new { on = effectManager.IsOn, online = true } }
-                    }
-                }
-            },
-
-            "action.devices.EXECUTE" => await HandleExecuteIntent(req, requestId),
-
-            _ => new() { RequestId = requestId, Payload = new { } }
+        var response = intent switch
+        {
+            Sync => HandleSyncIntent(requestId),
+            Query => HandleQueryIntent(requestId),
+            Execute => HandleExecuteIntent(req, requestId),
+            _ => new Response { RequestId = requestId, Payload = new { error = "Unsupported intent" } }
         };
 
         await SendAsync(response, cancellation: ct);
     }
-
-    private static SmartHomeResponse HandleExecuteIntent(SmartHomeRequest req, string requestId)
+    
+    private static Response HandleSyncIntent(string requestId) => new()
     {
-        var command = req.Inputs?.FirstOrDefault()?.Payload?.Commands?.FirstOrDefault();
-        var execution = command?.Execution?.FirstOrDefault();
-
-        if (execution?.Command == "action.devices.commands.OnOff")
+        RequestId = requestId,
+        Payload = new
         {
-            var turnOn = execution.Params?.On ?? false;
-            effectManager.Toggle(turnOn);
+            agentUserId = "123",
+            devices = new[]
+            {
+                new
+                {
+                    id = DeviceId,
+                    type = "action.devices.types.LIGHT",
+                    traits = new[] { "action.devices.traits.OnOff" },
+                    name = new { name = "LED Strip" },
+                    willReportState = false,
+                    deviceInfo = new
+                    {
+                        manufacturer = "LumeHub",
+                        model = "LEDv1"
+                    }
+                }
+            }
+        }
+    };
 
-            return new SmartHomeResponse
+    private Response HandleQueryIntent(string requestId) => new()
+    {
+        RequestId = requestId,
+        Payload = new
+        {
+            devices = new Dictionary<string, object>
+            {
+                [DeviceId] = new { on = effectManager.IsOn, online = true }
+            }
+        }
+    };
+
+    private Response HandleExecuteIntent(Request req, string requestId)
+    {
+        var execution = req.Inputs?
+            .FirstOrDefault()?.Payload?
+            .Commands?.FirstOrDefault()?
+            .Execution?.FirstOrDefault();
+
+        if (execution?.Command != OnOff)
+        {
+            return new Response
             {
                 RequestId = requestId,
                 Payload = new
                 {
                     commands = new[]
                     {
-                        new
-                        {
-                            ids = new[] { "led-strip" },
-                            status = "SUCCESS",
-                            states = new { on = turnOn, online = true }
-                        }
+                        new { ids = new[] { DeviceId }, status = "ERROR", errorCode = "unsupportedCommand" }
                     }
                 }
             };
         }
 
-        return new SmartHomeResponse
+        bool turnOn = execution.Params?.On ?? false;
+        effectManager.Toggle(turnOn);
+
+        return new Response
         {
             RequestId = requestId,
             Payload = new
@@ -99,12 +113,13 @@ public sealed class Endpoint(IManager effectManager) : Endpoint<SmartHomeRequest
                 {
                     new
                     {
-                        ids = new[] { "led-strip" },
-                        status = "ERROR",
-                        errorCode = "unsupportedCommand"
+                        ids = new[] { DeviceId },
+                        status = "SUCCESS",
+                        states = new { on = turnOn, online = true }
                     }
                 }
             }
         };
+
     }
 }

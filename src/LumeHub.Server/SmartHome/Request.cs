@@ -1,6 +1,6 @@
 namespace LumeHub.Server.SmartHome;
 
-public sealed class SmartHomeRequest
+public sealed class Request
 {
     public required string RequestId { get; init; }
     public required List<SmartHomeInput>? Inputs { get; init; }
