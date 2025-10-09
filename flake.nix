@@ -7,37 +7,33 @@
     };
 
     inputs = {
-        nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-        flake-parts.url = "github:hercules-ci/flake-parts";
+        naersk.url = "github:nix-community/naersk/master";
+        nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+        utils.url = "github:numtide/flake-utils";
     };
 
-    outputs = inputs:
-        inputs.flake-parts.lib.mkFlake {inherit inputs;} {
-            systems = [
-                "x86_64-linux"
-                "aarch64-linux"
-            ];
-            flake.nixosModules.default = import ./nix/nixosModule.nix inputs.self;
-            perSystem = {pkgs, ...}: let
-                dotnet-sdk = pkgs.dotnet-sdk_8;
-                aspnetcore = pkgs.dotnet-aspnetcore_8;
+    outputs = {
+        naersk,
+        nixpkgs,
+        utils,
+        ...
+    }:
+        utils.lib.eachDefaultSystem (
+            system: let
+                pkgs = import nixpkgs {inherit system;};
+                naersk-lib = pkgs.callPackage naersk {};
             in {
+                packages.default = naersk-lib.buildPackage ./.;
                 devShells.default = pkgs.mkShell {
-                    packages = [dotnet-sdk];
-                };
-                packages.default = pkgs.buildDotnetModule {
-                    inherit dotnet-sdk;
-                    name = "LumeHub.Server";
-                    version = "0.1.0";
-                    src = ./.;
-                    projectFileName = "src/LumeHub.Server/LumeHub.Server.csproj";
-                    nugetDeps = ./nix/deps.nix;
-                    frameworkDeps = [aspnetcore];
-
-                    makeWrapperArgs = [
-                        "--set DOTNET_ROOT ${aspnetcore}"
+                    buildInputs = with pkgs; [
+                        cargo
+                        rustc
+                        rustfmt
+                        pre-commit
+                        rustPackages.clippy
                     ];
+                    RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
                 };
-            };
-        };
+            }
+        );
 }
