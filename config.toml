@@ -1,0 +1,13 @@
+# config.toml
+
+[led_controller]
+type = "console" # Options: "console", "Ws2801"
+pixel_count = 10
+
+# Uncomment and configure these lines if you are using the Ws2801 controller
+# spi_path = "/dev/spidev0.0"
+# freq_hz = 1000000 # Example: 1MHz
+
+[server]
+ip_address = "127.0.0.1"
+port = 8080
