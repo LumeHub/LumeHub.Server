@@ -1,6 +1,8 @@
+mod controller;
 mod endpoints;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 
+use controller::{Controller, color::Rgb, drivers::console::Console};
 use endpoints::legacy;
 
 #[get("/")]
@@ -19,6 +21,15 @@ async fn manual_hello() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let mut led = Console::new(10);
+    led.fill(Rgb::new(255, 0, 0));
+    led.show();
+    led.fill(Rgb::new(0, 255, 0));
+    led.show();
+    led.fill(Rgb::new(0, 0, 255));
+    led.show();
+    led.fill(Rgb::new(255, 255, 255));
+    led.show();
     HttpServer::new(|| {
         App::new()
             .service(hello)
@@ -28,8 +39,5 @@ async fn main() -> std::io::Result<()> {
     })
     .bind(("127.0.0.1", 8080))?
     .run()
-    .await?;
-
-    println!("Server running at http://127.0.0.1:8080");
-    Ok(())
+    .await
 }
