@@ -2,7 +2,11 @@ mod controller;
 mod endpoints;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 
-use controller::{Controller, color::Rgb, drivers::console::Console};
+use controller::{
+    Controller,
+    color::Rgb,
+    drivers::{console::Console, ws2801::Ws2801},
+};
 use endpoints::legacy;
 
 #[get("/")]
