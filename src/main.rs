@@ -1,4 +1,7 @@
+mod endpoints;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
+
+use endpoints::legacy;
 
 #[get("/")]
 async fn hello() -> impl Responder {
@@ -20,9 +23,13 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .service(hello)
             .service(echo)
+            .service(legacy::led_state_get)
             .route("/hey", web::get().to(manual_hello))
     })
     .bind(("127.0.0.1", 8080))?
     .run()
-    .await
+    .await?;
+
+    println!("Server running at http://127.0.0.1:8080");
+    Ok(())
 }
