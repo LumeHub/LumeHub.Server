@@ -1,12 +1,9 @@
 mod controller;
 mod endpoints;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
+use config::{Config, Environment, File};
 
-use controller::{
-    Controller,
-    color::Rgb,
-    drivers::{console::Console, ws2801::Ws2801},
-};
+use controller::{LedControllerConfig, color::Rgb, create_controller};
 use endpoints::legacy;
 
 #[get("/")]
@@ -25,15 +22,26 @@ async fn manual_hello() -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let mut led = Console::new(10);
-    led.fill(Rgb::new(255, 0, 0));
-    led.show();
-    led.fill(Rgb::new(0, 255, 0));
-    led.show();
-    led.fill(Rgb::new(0, 0, 255));
-    led.show();
-    led.fill(Rgb::new(255, 255, 255));
-    led.show();
+    let settings = Config::builder()
+        .add_source(File::with_name("config.toml").required(false))
+        .add_source(Environment::with_prefix("LUMEHUB"))
+        .build()
+        .expect("Failed to load configuration");
+
+    let led_config = settings
+        .try_deserialize::<LedControllerConfig>()
+        .expect("Failed to deserialize LED controller configuration");
+
+    let mut led = match create_controller(&led_config) {
+        Ok(controller) => controller,
+        Err(e) => {
+            eprintln!("Error creating LED controller: {}", e);
+            // Fallback to a console controller or exit
+            Box::new(controller::drivers::console::Console::new(
+                led_config.pixel_count,
+            ))
+        }
+    };
     HttpServer::new(|| {
         App::new()
             .service(hello)
@@ -43,5 +51,8 @@ async fn main() -> std::io::Result<()> {
     })
     .bind(("127.0.0.1", 8080))?
     .run()
-    .await
+    .await?;
+
+    println!("Server running at http://127.0.0.1:8080");
+    Ok(())
 }

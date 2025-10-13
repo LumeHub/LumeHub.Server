@@ -29,10 +29,7 @@ impl Controller for Console {
         io::stdout().flush().unwrap(); // force terminal to display
     }
 
-    fn map<F>(&mut self, mut f: F)
-    where
-        F: FnMut(usize, crate::controller::color::Rgb) -> crate::controller::color::Rgb,
-    {
+    fn map(&mut self, mut f: Box<dyn FnMut(usize, crate::controller::color::Rgb) -> crate::controller::color::Rgb>) {
         for (i, p) in self.pixels.iter_mut().enumerate() {
             *p = f(i, *p);
         }

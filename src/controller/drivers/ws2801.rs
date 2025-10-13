@@ -29,10 +29,7 @@ impl Controller for Ws2801 {
         self.buf.len() / 3
     }
 
-    fn map<F>(&mut self, mut f: F)
-    where
-        F: FnMut(usize, Rgb) -> Rgb,
-    {
+    fn map(&mut self, mut f: Box<dyn FnMut(usize, Rgb) -> Rgb>) {
         self.buf
             .chunks_exact_mut(3)
             .enumerate()
