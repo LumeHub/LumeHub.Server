@@ -31,8 +31,10 @@ impl Controller for Console {
 
     fn map<F>(&mut self, mut f: F)
     where
-        F: FnMut(crate::controller::color::Rgb) -> crate::controller::color::Rgb,
+        F: FnMut(usize, crate::controller::color::Rgb) -> crate::controller::color::Rgb,
     {
-        self.pixels.iter_mut().for_each(|p| *p = f(*p));
+        for (i, p) in self.pixels.iter_mut().enumerate() {
+            *p = f(i, *p);
+        }
     }
 }

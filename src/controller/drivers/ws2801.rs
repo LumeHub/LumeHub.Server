@@ -31,7 +31,7 @@ impl Controller for Ws2801 {
 
     fn map<F>(&mut self, mut f: F)
     where
-        F: FnMut(Rgb) -> Rgb,
+        F: FnMut(usize, Rgb) -> Rgb,
     {
         self.buf
             .chunks_exact_mut(3)
@@ -42,7 +42,7 @@ impl Controller for Ws2801 {
                     g: chunk[1],
                     b: chunk[2],
                 };
-                let new = f(old);
+                let new = f(i, old);
                 chunk[0] = new.r;
                 chunk[1] = new.g;
                 chunk[2] = new.b;
