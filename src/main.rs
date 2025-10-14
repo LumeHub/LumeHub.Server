@@ -1,5 +1,6 @@
 mod color;
 mod controller;
+mod effects;
 mod endpoints;
 mod settings;
 
