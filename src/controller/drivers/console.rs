@@ -1,6 +1,8 @@
+use crate::{
+    controller::{Controller, color::Rgb},
+    impl_pixel_access_for_controller,
+};
 use std::io::{self, Write};
-
-use crate::controller::{Controller, color::Rgb};
 
 pub struct Console {
     pixels: Vec<Rgb>,
@@ -15,29 +17,15 @@ impl Console {
 }
 
 impl Controller for Console {
-    fn len(&self) -> usize {
-        self.pixels.len()
-    }
-
     fn show(&mut self) {
         // print the pixels
-        self.pixels.iter().for_each(|color| {
+        self.as_ref().iter().for_each(|color| {
             print!("\x1b[48;2;{};{};{}m \x1b[0m", color.r, color.g, color.b);
         });
         println!(); // next line
         print!("\x1b[0m"); // reset color
-        io::stdout().flush().unwrap(); // force terminal to display
-    }
-
-    fn map(
-        &mut self,
-        mut f: Box<
-            dyn FnMut(usize, crate::controller::color::Rgb) -> crate::controller::color::Rgb,
-        >,
-    ) {
-        self.pixels
-            .iter_mut()
-            .enumerate()
-            .for_each(|(i, p)| *p = f(i, *p));
+        io::stdout().flush().unwrap(); // force terminal to display;
     }
 }
+
+impl_pixel_access_for_controller!(Console);

@@ -1,25 +1,54 @@
 pub mod color;
 pub mod drivers;
 
-#[allow(dead_code)]
-pub trait Controller {
-    fn len(&self) -> usize;
-    fn show(&mut self);
-    fn fill(&mut self, color: color::Rgb) {
-        self.map(Box::new(move |_, _| color));
+use crate::controller::color::Rgb;
+use crate::settings::{ControllerType, LedControllerConfig};
+use drivers::{console::Console, ws2801::Ws2801};
+
+#[macro_export]
+macro_rules! impl_pixel_access_for_controller {
+    ($struct_name:ident) => {
+        impl AsRef<[Rgb]> for $struct_name {
+            fn as_ref(&self) -> &[Rgb] {
+                &self.pixels
+            }
+        }
+
+        impl AsMut<[Rgb]> for $struct_name {
+            fn as_mut(&mut self) -> &mut [Rgb] {
+                &mut self.pixels
+            }
+        }
+    };
+}
+
+pub trait Controller: Send + AsRef<[Rgb]> + AsMut<[Rgb]> {
+    fn as_pixel_slice(&self) -> &[Rgb] {
+        self.as_ref()
     }
-    fn map(&mut self, f: Box<dyn FnMut(usize, color::Rgb) -> color::Rgb>);
+    fn as_pixel_slice_mut(&mut self) -> &mut [Rgb] {
+        self.as_mut()
+    }
+    fn show(&mut self);
+}
+
+impl AsRef<[Rgb]> for Box<dyn Controller> {
+    fn as_ref(&self) -> &[Rgb] {
+        (**self).as_ref()
+    }
+}
+
+impl AsMut<[Rgb]> for Box<dyn Controller> {
+    fn as_mut(&mut self) -> &mut [Rgb] {
+        (**self).as_mut()
+    }
 }
 
 pub fn create_controller(
-    config: &crate::settings::LedControllerConfig,
+    config: &LedControllerConfig,
 ) -> Result<Box<dyn Controller>, std::io::Error> {
     match config.controller_type {
-        crate::settings::ControllerType::Console => {
-            Ok(Box::new(drivers::console::Console::new(config.pixel_count)))
-        }
-        crate::settings::ControllerType::Ws2801 => {
-            Ok(Box::new(drivers::ws2801::Ws2801::new(config)?))
-        }
+        ControllerType::Console => Ok(Box::new(Console::new(config.pixel_count))),
+        ControllerType::Ws2801 => Ok(Box::new(Ws2801::new(config)?)),
     }
 }

@@ -4,7 +4,7 @@ mod settings;
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 use settings::Settings;
 
-use controller::create_controller;
+use controller::{Controller, create_controller};
 use endpoints::legacy;
 
 #[get("/")]
@@ -25,14 +25,14 @@ async fn manual_hello() -> impl Responder {
 async fn main() -> std::io::Result<()> {
     let app_settings = Settings::new().expect("Failed to load configuration");
 
-    let mut led = match create_controller(&app_settings.led_controller) {
+    let led = match create_controller(&app_settings.led_controller) {
         Ok(controller) => controller,
         Err(e) => {
             eprintln!("Error creating LED controller: {}", e);
             // Fallback to a console controller or exit
             Box::new(controller::drivers::console::Console::new(
                 app_settings.led_controller.pixel_count,
-            ))
+            )) as Box<dyn Controller>
         }
     };
 
