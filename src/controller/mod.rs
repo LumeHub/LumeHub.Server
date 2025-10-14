@@ -1,7 +1,6 @@
-pub mod color;
 pub mod drivers;
 
-use crate::controller::color::Rgb;
+use crate::color::Rgb;
 use crate::settings::{ControllerType, LedControllerConfig};
 use drivers::{console::Console, ws2801::Ws2801};
 

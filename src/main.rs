@@ -1,6 +1,8 @@
+mod color;
 mod controller;
 mod endpoints;
 mod settings;
+
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 use settings::Settings;
 

@@ -1,8 +1,6 @@
+use crate::color::Rgb;
 use crate::settings::LedControllerConfig;
-use crate::{
-    controller::{Controller, color::Rgb},
-    impl_pixel_access_for_controller,
-};
+use crate::{controller::Controller, impl_pixel_access_for_controller};
 use spidev::{SpiModeFlags, Spidev, SpidevOptions};
 use std::{
     io::{self, Write},
