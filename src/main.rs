@@ -3,25 +3,33 @@ mod controller;
 mod effects;
 mod endpoints;
 mod settings;
+mod state;
 
-use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
+use std::{sync::Mutex, thread, time::Duration};
+
+use actix_web::{App, HttpServer, web};
+use effects::EffectQueue;
 use settings::Settings;
+use state::LumeState;
 
 use controller::{Controller, create_controller};
 use endpoints::legacy;
 
-#[get("/")]
-async fn hello() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
-}
-
-#[post("/echo")]
-async fn echo(req_body: String) -> impl Responder {
-    HttpResponse::Ok().body(req_body)
-}
-
-async fn manual_hello() -> impl Responder {
-    HttpResponse::Ok().body("Hey there!")
+fn run_effects_thread(
+    mut led: Box<dyn Controller>,
+    rx: std::sync::mpsc::Receiver<Box<dyn effects::Effect + Send>>,
+) {
+    thread::spawn(move || {
+        loop {
+            if let Ok(effect) = rx.recv() {
+                for frame in effect.frames(led.as_pixel_slice()) {
+                    led.as_pixel_slice_mut().copy_from_slice(&frame);
+                    led.show();
+                    thread::sleep(Duration::from_millis(10));
+                }
+            }
+        }
+    });
 }
 
 #[actix_web::main]
@@ -35,24 +43,27 @@ async fn main() -> std::io::Result<()> {
             // Fallback to a console controller or exit
             Box::new(controller::drivers::console::Console::new(
                 app_settings.led_controller.pixel_count,
-            )) as Box<dyn Controller>
+            ))
         }
     };
+
+    let (effect_queue, rx) = EffectQueue::new();
+    run_effects_thread(led, rx);
+
+    let lume_state = web::Data::new(Mutex::new(LumeState::default()));
 
     let ip_address = app_settings.server.ip_address;
     let port = app_settings.server.port;
 
-    HttpServer::new(|| {
+    println!("Server running at http://{}:{}", ip_address, port);
+
+    HttpServer::new(move || {
         App::new()
-            .service(hello)
-            .service(echo)
-            .service(legacy::led_state_get)
-            .route("/hey", web::get().to(manual_hello))
+            .app_data(web::Data::new(effect_queue.clone()))
+            .app_data(lume_state.clone())
+            .configure(legacy::config)
     })
     .bind((ip_address.as_str(), port))?
     .run()
-    .await?;
-
-    println!("Server running at http://{}:{}", ip_address, port);
-    Ok(())
+    .await
 }
