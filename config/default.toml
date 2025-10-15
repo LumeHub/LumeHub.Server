@@ -1,10 +1,10 @@
 [led_controller]
 controller_type = "console"
-pixel_count = 10
+pixel_count = 100
 spi_path = "/dev/spidev0.0"
 freq_hz = 1000000
 latch_time_micros = 500
 
 [server]
 ip_address = "127.0.0.1"
-port = 8080
+port = 5000
