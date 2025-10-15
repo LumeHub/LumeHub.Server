@@ -6,3 +6,6 @@ target
 
 # nix
 result
+
+# project specific
+config.toml
