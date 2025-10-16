@@ -16,7 +16,7 @@
         naersk,
         nixpkgs,
         utils,
-        ...
+        self,
     }:
         utils.lib.eachDefaultSystem (
             system: let
@@ -35,5 +35,8 @@
                     RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
                 };
             }
-        );
+        )
+        // {
+            nixosModules.default = import ./nix/nixosModule.nix self;
+        };
 }
