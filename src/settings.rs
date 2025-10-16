@@ -1,3 +1,4 @@
+use clap::Parser;
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
 
@@ -29,14 +30,26 @@ pub struct Settings {
     pub server: ServerConfig,
 }
 
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Args {
+    #[arg(short, long, env = "LUMEHUB_CONFIG")]
+    config: Option<String>,
+}
+
 impl Settings {
     pub fn new() -> Result<Self, ConfigError> {
+        let args = Args::parse();
+
         let s = Config::builder()
             .add_source(config::File::from_str(
                 include_str!("../config/default.toml"),
                 config::FileFormat::Toml,
             ))
-            .add_source(File::with_name("config.toml").required(false))
+            .add_source(
+                File::with_name(&args.config.unwrap_or_else(|| "config.toml".to_string()))
+                    .required(false),
+            )
             .add_source(Environment::with_prefix("LUMEHUB"))
             .build()?;
 
