@@ -62,6 +62,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(effect_queue.clone()))
             .app_data(lume_state.clone())
             .configure(legacy::config)
+            .configure(endpoints::google_config)
     })
     .bind((ip_address.as_str(), port))?
     .run()
