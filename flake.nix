@@ -7,21 +7,23 @@
     };
 
     inputs = {
-        naersk.url = "github:nix-community/naersk/master";
         nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-        utils.url = "github:numtide/flake-utils";
+        naersk = {
+            url = "github:nix-community/naersk/master";
+            inputs.nixpkgs.follows = "nixpkgs";
+        };
+        flake-parts.url = "github:hercules-ci/flake-parts";
     };
 
-    outputs = {
-        naersk,
-        nixpkgs,
-        utils,
-        self,
-    }:
-        utils.lib.eachDefaultSystem (
-            system: let
-                pkgs = import nixpkgs {inherit system;};
-                naersk-lib = pkgs.callPackage naersk {};
+    outputs = inputs:
+        inputs.flake-parts.lib.mkFlake {inherit inputs;} {
+            systems = [
+                "x86_64-linux"
+                "aarch64-linux"
+            ];
+            imports = [./nix/nixosModule.nix];
+            perSystem = {pkgs, ...}: let
+                naersk-lib = pkgs.callPackage inputs.naersk {};
             in {
                 packages.default = naersk-lib.buildPackage ./.;
                 devShells.default = pkgs.mkShell {
@@ -34,9 +36,6 @@
                     ];
                     RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
                 };
-            }
-        )
-        // {
-            nixosModules.default = import ./nix/nixosModule.nix self;
+            };
         };
 }
