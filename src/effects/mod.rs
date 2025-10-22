@@ -2,6 +2,7 @@ use crate::color::Rgb;
 
 pub mod fade_color;
 pub mod queue;
+pub mod zone_interpolation;
 
 pub use queue::EffectQueue;
 
