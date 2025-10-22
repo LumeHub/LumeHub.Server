@@ -13,7 +13,6 @@ use settings::Settings;
 use state::LumeState;
 
 use controller::{Controller, create_controller};
-use endpoints::legacy;
 
 fn run_effects_thread(
     mut led: Box<dyn Controller>,
@@ -61,8 +60,9 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(effect_queue.clone()))
             .app_data(lume_state.clone())
-            .configure(legacy::config)
-            .configure(endpoints::google_config)
+            .configure(endpoints::legacy::config)
+            .configure(endpoints::google::config)
+            .configure(endpoints::oauth::config)
     })
     .bind((ip_address.as_str(), port))?
     .run()
