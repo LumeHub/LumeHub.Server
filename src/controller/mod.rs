@@ -1,4 +1,5 @@
 pub mod drivers;
+pub mod effect_processor;
 
 use crate::color::Rgb;
 use crate::settings::{ControllerType, LedControllerConfig};

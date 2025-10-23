@@ -5,31 +5,14 @@ mod endpoints;
 mod settings;
 mod state;
 
-use std::{sync::Mutex, thread, time::Duration};
+use std::sync::Mutex;
 
 use actix_web::{App, HttpServer, web};
 use effects::EffectQueue;
 use settings::Settings;
 use state::LumeState;
 
-use controller::{Controller, create_controller};
-
-fn run_effects_thread(
-    mut led: Box<dyn Controller>,
-    rx: std::sync::mpsc::Receiver<Box<dyn effects::Effect + Send>>,
-) {
-    thread::spawn(move || {
-        loop {
-            if let Ok(effect) = rx.recv() {
-                for frame in effect.frames(led.as_pixel_slice()) {
-                    led.as_pixel_slice_mut().copy_from_slice(&frame);
-                    led.show();
-                    thread::sleep(Duration::from_millis(10));
-                }
-            }
-        }
-    });
-}
+use controller::create_controller;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -47,7 +30,7 @@ async fn main() -> std::io::Result<()> {
     };
 
     let (effect_queue, rx) = EffectQueue::new();
-    run_effects_thread(led, rx);
+    controller::effect_processor::spawn(led, rx);
 
     let lume_state = web::Data::new(Mutex::new(LumeState::default()));
 
