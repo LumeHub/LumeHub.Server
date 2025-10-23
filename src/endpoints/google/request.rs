@@ -49,6 +49,14 @@ pub struct CommandRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecutionRequest {
-    pub command: String,
+    pub command: ExecuteCommandType,
     pub params: serde_json::Value,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+pub enum ExecuteCommandType {
+    #[serde(rename = "action.devices.commands.OnOff")]
+    OnOff,
+    #[serde(rename = "action.devices.commands.ColorAbsolute")]
+    ColorAbsolute,
 }
