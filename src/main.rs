@@ -5,12 +5,9 @@ mod endpoints;
 mod settings;
 mod state;
 
-use std::sync::Mutex;
-
 use actix_web::{App, HttpServer, web};
 use effects::EffectQueue;
 use settings::Settings;
-use state::LumeState;
 
 use controller::create_controller;
 
@@ -32,7 +29,7 @@ async fn main() -> std::io::Result<()> {
     let (effect_queue, rx) = EffectQueue::new();
     controller::effect_processor::spawn(led, rx);
 
-    let lume_state = web::Data::new(Mutex::new(LumeState::default()));
+    let lume_state = state::lume_app_data();
 
     let ip_address = app_settings.server.ip_address;
     let port = app_settings.server.port;
