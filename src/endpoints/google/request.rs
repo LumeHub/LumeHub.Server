@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,6 +46,19 @@ pub struct CommandRequest {
     pub execution: Vec<ExecutionRequest>,
 }
 
+impl CommandRequest {
+    pub fn get_params<T: DeserializeOwned>(&self) -> Result<T, String> {
+        let params_value = self
+            .execution
+            .first()
+            .ok_or_else(|| "badRequest".to_string())?
+            .params
+            .clone();
+
+        serde_json::from_value(params_value).map_err(|_| "badRequest".to_string())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecutionRequest {
@@ -64,3 +77,4 @@ pub enum ExecuteCommandType {
     #[serde(rename = "action.devices.commands.BrightnessRelative")]
     BrightnessRelative,
 }
+

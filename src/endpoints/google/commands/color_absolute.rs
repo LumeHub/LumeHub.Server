@@ -1,16 +1,12 @@
-use std::sync::MutexGuard;
-
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::color::Rgb;
-use crate::effects::EffectQueue;
-use crate::effects::fade_color::FadeColor;
-use crate::state::LumeState;
+use crate::lume_service::LumeService;
 use hsv::hsv_to_rgb;
 
-use super::super::request::CommandRequest;
-use super::super::response::{CommandResponse, CommandStatus, DeviceStates};
+use super::super::request::ExecuteCommandType;
+use super::GoogleCommandWithParams;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,7 +41,6 @@ pub struct ColorState {
     #[serde(rename = "spectrumRGB")]
     pub spectrum_rgb: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "spectrumHSV")]
     pub spectrum_hsv: Option<ColorStateHsv>,
 }
 
@@ -101,55 +96,30 @@ fn parse_temperature_k(kelvin: u32) -> (Rgb, ColorState) {
     )
 }
 
-fn parse_color_params(
-    color_params: &ColorAbsoluteColor,
-    make_error_responses: impl Fn(&str) -> Vec<CommandResponse>,
-) -> Result<(Rgb, ColorState), Vec<CommandResponse>> {
+fn parse_color_params(color_params: &ColorAbsoluteColor) -> Result<Rgb, String> {
     if let Some(spectrum_rgb) = color_params.spectrum_rgb {
-        Ok(parse_spectrum_rgb(spectrum_rgb))
+        Ok(parse_spectrum_rgb(spectrum_rgb).0)
     } else if let Some(spectrum_hsv) = &color_params.spectrum_hsv {
-        Ok(parse_spectrum_hsv(spectrum_hsv))
+        Ok(parse_spectrum_hsv(spectrum_hsv).0)
     } else if let Some(kelvin) = color_params.temperature {
-        Ok(parse_temperature_k(kelvin))
+        Ok(parse_temperature_k(kelvin).0)
     } else {
-        Err(make_error_responses("noColorProvided"))
+        Err("noColorProvided".to_string())
     }
 }
 
-pub fn handle_color_absolute_command(
-    cmd_req: &CommandRequest,
-    state: &mut MutexGuard<LumeState>,
-    effect_queue: &EffectQueue,
-    make_error_responses: impl Fn(&str) -> Vec<CommandResponse>,
-) -> Vec<CommandResponse> {
-    serde_json::from_value::<ColorAbsoluteParams>(cmd_req.execution.first().unwrap().params.clone())
-        .map(|params| {
-            let (rgb_color, color_state) =
-                match parse_color_params(&params.color, &make_error_responses) {
-                    Ok(val) => val,
-                    Err(err_resp) => return err_resp,
-                };
+pub struct ColorAbsoluteCommand;
 
-            state.active_color = rgb_color;
-            state.is_on = true; // Setting color implies turning on
+impl GoogleCommandWithParams for ColorAbsoluteCommand {
+    type Params = ColorAbsoluteParams;
 
-            effect_queue.enqueue(Box::new(FadeColor { color: rgb_color }));
+    fn command_type(&self) -> ExecuteCommandType {
+        ExecuteCommandType::ColorAbsolute
+    }
 
-            cmd_req
-                .devices
-                .iter()
-                .map(|d| CommandResponse {
-                    ids: vec![d.id.clone()],
-                    status: CommandStatus::Success,
-                    states: Some(DeviceStates {
-                        on: Some(true),
-                        online: Some(true),
-                        brightness: Some(state.brightness),
-                        color: Some(color_state.clone()),
-                    }),
-                    error_code: None,
-                })
-                .collect()
-        })
-        .unwrap_or_else(|_| make_error_responses("badRequest"))
+    fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
+        let rgb_color = parse_color_params(&params.color)?;
+        lume_service.set_color(rgb_color);
+        Ok(())
+    }
 }

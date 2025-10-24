@@ -6,8 +6,7 @@ use actix_web::{HttpResponse, Responder, post, web};
 use super::device::{GoogleDevice, LedStrip};
 use super::request::{Intent, RequestInput, SmartHomeRequest};
 use super::response::{
-    CommandResponse, ExecuteResponse, QueryResponse, ResponsePayload, SmartHomeResponse,
-    SyncResponse,
+    ExecuteResponse, QueryResponse, ResponsePayload, SmartHomeResponse, SyncResponse,
 };
 use crate::effects::EffectQueue;
 use crate::state::LumeState;
@@ -19,12 +18,15 @@ async fn smarthome(
     req: web::Json<SmartHomeRequest>,
     lume_state: web::Data<Mutex<LumeState>>,
     effect_queue: web::Data<EffectQueue>,
+    command_dispatcher: web::Data<commands::CommandDispatcher>,
 ) -> impl Responder {
     let response_payload = match req.inputs.first() {
         Some(input) => match input.intent {
             Intent::Sync => handle_sync(),
             Intent::Query => handle_query(input, &lume_state),
-            Intent::Execute => handle_execute(input, &lume_state, &effect_queue),
+            Intent::Execute => {
+                handle_execute(input, &lume_state, &effect_queue, &command_dispatcher)
+            }
             Intent::Disconnect => ResponsePayload::Error(super::response::ErrorResponse {
                 error_code: "Unsupported intent: DISCONNECT".to_string(),
             }),
@@ -74,19 +76,23 @@ fn handle_execute(
     input: &RequestInput,
     lume_state: &web::Data<Mutex<LumeState>>,
     effect_queue: &web::Data<EffectQueue>,
+    command_dispatcher: &web::Data<commands::CommandDispatcher>,
 ) -> ResponsePayload {
-    let mut state = lume_state.lock().unwrap();
+    let mut lume_service = crate::lume_service::LumeService::new(lume_state, effect_queue);
 
-    let command_responses: Vec<CommandResponse> = input
-        .payload
-        .as_ref()
-        .and_then(|p| p.commands.as_ref())
-        .map_or_else(Vec::new, |commands| {
-            commands
-                .iter()
-                .flat_map(|cmd_req| commands::process_command(cmd_req, &mut state, effect_queue))
-                .collect()
-        });
+    let command_responses = if let Some(payload) = input.payload.as_ref() {
+        if let Some(commands_vec) = payload.commands.as_ref() {
+            let mut responses = Vec::new();
+            for cmd_req in commands_vec.iter() {
+                responses.extend(command_dispatcher.process_command(cmd_req, &mut lume_service));
+            }
+            responses
+        } else {
+            Vec::new()
+        }
+    } else {
+        Vec::new()
+    };
 
     ResponsePayload::Execute(ExecuteResponse {
         commands: command_responses,

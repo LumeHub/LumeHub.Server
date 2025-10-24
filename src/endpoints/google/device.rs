@@ -1,13 +1,13 @@
-use serde_json::json;
-
 use super::response::{Device, DeviceInfo, Name};
-use crate::state::LumeState;
+use crate::{
+    endpoints::google::{commands::color_absolute::ColorState, response::DeviceStates},
+    state::LumeState,
+};
 
 const DEVICE_ID: &str = "led-strip";
 
 pub trait GoogleDevice {
     fn sync(&self) -> Device;
-
     fn query(&self, state: &LumeState) -> serde_json::Value;
 }
 
@@ -43,6 +43,19 @@ impl GoogleDevice for LedStrip {
     }
 
     fn query(&self, state: &LumeState) -> serde_json::Value {
-        json!({ "on": state.is_on, "online": true, "brightness": state.brightness })
+        serde_json::to_value(device_states_from_lume_state(state)).unwrap()
+    }
+}
+
+pub fn device_states_from_lume_state(state: &LumeState) -> DeviceStates {
+    DeviceStates {
+        on: Some(state.is_on),
+        online: Some(true),
+        brightness: Some(state.brightness),
+        color: Some(ColorState {
+            spectrum_rgb: Some(state.active_color.to_spectrum()),
+            spectrum_hsv: None,
+            temperature_k: None,
+        }),
     }
 }

@@ -45,6 +45,10 @@ impl Rgb {
         }
     }
 
+    pub fn to_spectrum(self) -> u32 {
+        (self.r as u32) << 16 | (self.g as u32) << 8 | (self.b as u32)
+    }
+
     pub fn from_spectrum_rgb(spectrum_rgb: u32) -> Self {
         let r = ((spectrum_rgb >> 16) & 0xFF) as u8;
         let g = ((spectrum_rgb >> 8) & 0xFF) as u8;

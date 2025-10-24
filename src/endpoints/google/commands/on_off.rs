@@ -1,14 +1,9 @@
-use std::sync::MutexGuard;
-
 use serde::Deserialize;
 
-use crate::color::Rgb;
-use crate::effects::EffectQueue;
-use crate::effects::fade_color::FadeColor;
-use crate::state::LumeState;
+use crate::lume_service::LumeService;
 
-use super::super::request::CommandRequest;
-use super::super::response::{CommandResponse, CommandStatus, DeviceStates};
+use super::super::request::ExecuteCommandType;
+use super::GoogleCommandWithParams;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -16,39 +11,17 @@ pub struct OnOffParams {
     pub on: bool,
 }
 
-pub fn handle_on_off_command(
-    cmd_req: &CommandRequest,
-    state: &mut MutexGuard<LumeState>,
-    effect_queue: &EffectQueue,
-    make_error_responses: impl Fn(&str) -> Vec<CommandResponse>,
-) -> Vec<CommandResponse> {
-    serde_json::from_value::<OnOffParams>(cmd_req.execution.first().unwrap().params.clone())
-        .map(|params| {
-            state.is_on = params.on;
-            let effect = if params.on {
-                Box::new(FadeColor {
-                    color: state.active_color,
-                })
-            } else {
-                Box::new(FadeColor { color: Rgb::BLACK })
-            };
-            effect_queue.enqueue(effect);
+pub struct OnOffCommand;
 
-            cmd_req
-                .devices
-                .iter()
-                .map(|d| CommandResponse {
-                    ids: vec![d.id.clone()],
-                    status: CommandStatus::Success,
-                    states: Some(DeviceStates {
-                        on: Some(params.on),
-                        online: Some(true),
-                        brightness: Some(state.brightness),
-                        color: None,
-                    }),
-                    error_code: None,
-                })
-                .collect()
-        })
-        .unwrap_or_else(|_| make_error_responses("badRequest"))
+impl GoogleCommandWithParams for OnOffCommand {
+    type Params = OnOffParams;
+
+    fn command_type(&self) -> ExecuteCommandType {
+        ExecuteCommandType::OnOff
+    }
+
+    fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
+        lume_service.set_on_off(params.on);
+        Ok(())
+    }
 }
