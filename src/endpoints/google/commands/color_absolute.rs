@@ -144,6 +144,7 @@ pub fn handle_color_absolute_command(
                     states: Some(DeviceStates {
                         on: Some(true),
                         online: Some(true),
+                        brightness: Some(state.brightness),
                         color: Some(color_state.clone()),
                     }),
                     error_code: None,

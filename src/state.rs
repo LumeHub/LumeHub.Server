@@ -7,6 +7,7 @@ use actix_web::web;
 pub struct LumeState {
     pub active_color: Rgb,
     pub is_on: bool,
+    pub brightness: u8,
 }
 
 impl Default for LumeState {
@@ -14,6 +15,7 @@ impl Default for LumeState {
         Self {
             active_color: Rgb::BLACK,
             is_on: true,
+            brightness: 100,
         }
     }
 }

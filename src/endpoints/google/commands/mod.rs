@@ -1,5 +1,7 @@
 pub mod color_absolute;
 pub mod on_off;
+pub mod brightness_absolute;
+pub mod brightness_relative;
 
 use std::sync::MutexGuard;
 
@@ -41,6 +43,17 @@ pub fn process_command(
             effect_queue,
             make_error_responses,
         ),
-        _ => make_error_responses("unsupportedCommand"),
+        ExecuteCommandType::BrightnessAbsolute => brightness_absolute::handle_brightness_absolute_command(
+            cmd_req,
+            state,
+            effect_queue,
+            make_error_responses,
+        ),
+        ExecuteCommandType::BrightnessRelative => brightness_relative::handle_brightness_relative_command(
+            cmd_req,
+            state,
+            effect_queue,
+            make_error_responses,
+        ),
     }
 }

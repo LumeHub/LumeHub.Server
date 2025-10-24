@@ -36,6 +36,15 @@ impl Rgb {
         dr.max(dg).max(db) as u8
     }
 
+    pub fn with_brightness(&self, brightness: u8) -> Self {
+        let scale = brightness as f32 / 100.0;
+        Rgb {
+            r: (self.r as f32 * scale) as u8,
+            g: (self.g as f32 * scale) as u8,
+            b: (self.b as f32 * scale) as u8,
+        }
+    }
+
     pub fn from_spectrum_rgb(spectrum_rgb: u32) -> Self {
         let r = ((spectrum_rgb >> 16) & 0xFF) as u8;
         let g = ((spectrum_rgb >> 8) & 0xFF) as u8;

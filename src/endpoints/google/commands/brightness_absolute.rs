@@ -2,7 +2,6 @@ use std::sync::MutexGuard;
 
 use serde::Deserialize;
 
-use crate::color::Rgb;
 use crate::effects::EffectQueue;
 use crate::effects::fade_color::FadeColor;
 use crate::state::LumeState;
@@ -12,26 +11,22 @@ use super::super::response::{CommandResponse, CommandStatus, DeviceStates};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OnOffParams {
-    pub on: bool,
+pub struct BrightnessAbsoluteParams {
+    pub brightness: u8,
 }
 
-pub fn handle_on_off_command(
+pub fn handle_brightness_absolute_command(
     cmd_req: &CommandRequest,
     state: &mut MutexGuard<LumeState>,
     effect_queue: &EffectQueue,
     make_error_responses: impl Fn(&str) -> Vec<CommandResponse>,
 ) -> Vec<CommandResponse> {
-    serde_json::from_value::<OnOffParams>(cmd_req.execution.first().unwrap().params.clone())
+    serde_json::from_value::<BrightnessAbsoluteParams>(cmd_req.execution.first().unwrap().params.clone())
         .map(|params| {
-            state.is_on = params.on;
-            let effect = if params.on {
-                Box::new(FadeColor {
-                    color: state.active_color,
-                })
-            } else {
-                Box::new(FadeColor { color: Rgb::BLACK })
-            };
+            state.brightness = params.brightness;
+            let effect = Box::new(FadeColor {
+                color: state.active_color.with_brightness(state.brightness),
+            });
             effect_queue.enqueue(effect);
 
             cmd_req
@@ -41,7 +36,7 @@ pub fn handle_on_off_command(
                     ids: vec![d.id.clone()],
                     status: CommandStatus::Success,
                     states: Some(DeviceStates {
-                        on: Some(params.on),
+                        on: Some(state.is_on),
                         online: Some(true),
                         brightness: Some(state.brightness),
                         color: None,

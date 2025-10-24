@@ -57,6 +57,10 @@ pub struct ExecutionRequest {
 pub enum ExecuteCommandType {
     #[serde(rename = "action.devices.commands.OnOff")]
     OnOff,
+    #[serde(rename = "action.devices.commands.BrightnessAbsolute")]
+    BrightnessAbsolute,
     #[serde(rename = "action.devices.commands.ColorAbsolute")]
     ColorAbsolute,
+    #[serde(rename = "action.devices.commands.BrightnessRelative")]
+    BrightnessRelative,
 }

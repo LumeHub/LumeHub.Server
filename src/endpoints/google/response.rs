@@ -103,5 +103,7 @@ pub struct DeviceStates {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub online: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub brightness: Option<u8>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub color: Option<ColorState>,
 }

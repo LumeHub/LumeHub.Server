@@ -21,6 +21,7 @@ impl GoogleDevice for LedStrip {
             traits: vec![
                 "action.devices.traits.OnOff".to_string(),
                 "action.devices.traits.ColorSetting".to_string(),
+                "action.devices.traits.Brightness".to_string(),
             ],
             name: Name {
                 name: "LED Strip".to_string(),
@@ -35,12 +36,13 @@ impl GoogleDevice for LedStrip {
                 "colorTemperatureRange": {
                     "temperatureMinK": 2000,
                     "temperatureMaxK": 9000
-                }
+                },
+                "commandOnlyBrightness": false
             })),
         }
     }
 
     fn query(&self, state: &LumeState) -> serde_json::Value {
-        json!({ "on": state.is_on, "online": true })
+        json!({ "on": state.is_on, "online": true, "brightness": state.brightness })
     }
 }
