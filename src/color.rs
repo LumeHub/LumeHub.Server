@@ -8,6 +8,10 @@ pub struct Rgb {
 impl Rgb {
     pub const BLACK: Self = Self { r: 0, g: 0, b: 0 };
 
+    pub fn new(r: u8, g: u8, b: u8) -> Self {
+        Self { r, g, b }
+    }
+
     pub fn lerp(&self, other: Rgb, t: f32) -> Self {
         let mix = |x1, x2| (x1 as f32 * (1.0 - t) + x2 as f32 * t).round() as u8;
         Rgb {
