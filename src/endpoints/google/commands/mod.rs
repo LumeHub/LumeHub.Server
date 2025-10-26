@@ -1,7 +1,11 @@
 pub mod brightness_absolute;
 pub mod brightness_relative;
 pub mod color_absolute;
+pub mod color_loop;
 pub mod on_off;
+pub mod sleep;
+pub mod stop_effect;
+pub mod wake;
 
 use crate::lume_service::LumeService;
 use serde::de::DeserializeOwned;
@@ -62,6 +66,10 @@ impl CommandDispatcher {
                 Box::new(color_absolute::ColorAbsoluteCommand),
                 Box::new(brightness_absolute::BrightnessAbsoluteCommand),
                 Box::new(brightness_relative::BrightnessRelativeCommand),
+                Box::new(color_loop::ColorLoopCommand),
+                Box::new(sleep::SleepCommand),
+                Box::new(wake::WakeCommand),
+                Box::new(stop_effect::StopEffectCommand),
             ],
         }
     }

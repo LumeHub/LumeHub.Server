@@ -76,5 +76,12 @@ pub enum ExecuteCommandType {
     ColorAbsolute,
     #[serde(rename = "action.devices.commands.BrightnessRelative")]
     BrightnessRelative,
+    #[serde(rename = "action.devices.commands.ColorLoop")]
+    ColorLoop,
+    #[serde(rename = "action.devices.commands.Sleep")]
+    Sleep,
+    #[serde(rename = "action.devices.commands.Wake")]
+    Wake,
+    #[serde(rename = "action.devices.commands.StopEffect")]
+    StopEffect,
 }
-

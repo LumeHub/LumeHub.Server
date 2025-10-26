@@ -28,11 +28,12 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    let (effect_queue, rx) = EffectQueue::new();
-    controller::effect_processor::spawn(led, rx);
+    let (effect_queue, rx_effect_processor) = EffectQueue::new();
 
     let lume_state = state::lume_app_data();
     let command_dispatcher = CommandDispatcher::new();
+
+    controller::effect_processor::spawn(led, rx_effect_processor);
 
     let ip_address = app_settings.server.ip_address;
     let port = app_settings.server.port;
@@ -52,4 +53,3 @@ async fn main() -> std::io::Result<()> {
     .run()
     .await
 }
-

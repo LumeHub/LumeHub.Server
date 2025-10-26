@@ -9,7 +9,7 @@ pub struct ZoneInterpolation {
 }
 
 impl Effect for ZoneInterpolation {
-    fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send> {
+    fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static> {
         let len = pixels.len();
         let mut frame = vec![Rgb::BLACK; len];
 

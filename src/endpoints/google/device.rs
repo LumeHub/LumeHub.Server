@@ -22,6 +22,7 @@ impl GoogleDevice for LedStrip {
                 "action.devices.traits.OnOff".to_string(),
                 "action.devices.traits.ColorSetting".to_string(),
                 "action.devices.traits.Brightness".to_string(),
+                "action.devices.traits.LightEffects".to_string(),
             ],
             name: Name {
                 name: "LED Strip".to_string(),
@@ -37,7 +38,11 @@ impl GoogleDevice for LedStrip {
                     "temperatureMinK": 2000,
                     "temperatureMaxK": 9000
                 },
-                "commandOnlyBrightness": false
+                "commandOnlyBrightness": false,
+                "supportedEffects": ["colorLoop", "sleep", "wake"],
+                "defaultColorLoopDuration": 1800,
+                "defaultSleepDuration": 1800,
+                "defaultWakeDuration": 1800
             })),
         }
     }
@@ -57,5 +62,7 @@ pub fn device_states_from_lume_state(state: &LumeState) -> DeviceStates {
             spectrum_hsv: None,
             temperature_k: None,
         }),
+        active_light_effect: state.active_light_effect.clone(),
+        light_effect_end_unix_timestamp_sec: state.light_effect_end_unix_timestamp_sec,
     }
 }
