@@ -30,15 +30,10 @@ impl<'a> LumeService<'a> {
         state.is_on = on;
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
-        let effect = if on {
-            Box::new(FadeColor {
-                color: state.active_color.with_brightness(state.brightness),
-            })
-        } else {
-            Box::new(FadeColor {
-                color: Rgb::BLACK.with_brightness(state.brightness),
-            })
-        };
+        let effect = Box::new(FadeColor {
+            color: if on { state.active_color } else { Rgb::BLACK }
+                .with_brightness(state.brightness),
+        });
         self.effect_queue.enqueue(effect);
     }
 
