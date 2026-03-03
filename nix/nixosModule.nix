@@ -15,8 +15,35 @@
             enable = mkEnableOption "lumehub";
             openFirewall = mkEnableOption "open firewall for lumehub";
             settings = let
+                jsonLike = types.recursive (self:
+                    types.oneOf (with types; [
+                        int
+                        float
+                        bool
+                        str
+                        (attrsOf self)
+                        (listOf self)
+                    ]));
+
+                presetType = types.submodule {
+                    options = {
+                        effect = mkOption {
+                            type = types.str;
+                        };
+                        params = mkOption {
+                            type = types.attrsOf jsonLike;
+                            default = {};
+                        };
+                    };
+                };
                 mapOptions = mapAttrs (key: value:
-                    if isAttrs value
+                    if key == "presets" && isAttrs value
+                    then
+                        mkOption {
+                            type = types.attrsOf presetType;
+                            default = value;
+                        }
+                    else if isAttrs value
                     then mapOptions value
                     else
                         mkOption {
