@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use clap::Parser;
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
@@ -19,6 +22,18 @@ pub struct LedControllerConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct EffectPreset {
+    pub effect: String,
+    pub params: Value,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+pub struct EffectsConfig {
+    #[serde(default)]
+    pub presets: HashMap<String, EffectPreset>,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ServerConfig {
     pub ip_address: String,
     pub port: u16,
@@ -28,6 +43,8 @@ pub struct ServerConfig {
 pub struct Settings {
     pub led_controller: LedControllerConfig,
     pub server: ServerConfig,
+    #[serde(default)]
+    pub effects: EffectsConfig,
 }
 
 #[derive(Parser)]

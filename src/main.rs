@@ -29,6 +29,7 @@ async fn main() -> std::io::Result<()> {
     };
 
     let (effect_queue, rx_effect_processor) = EffectQueue::new();
+    let effect_registry = effects::build_registry();
 
     let lume_state = state::lume_app_data();
     let command_dispatcher = CommandDispatcher::new();
@@ -40,11 +41,16 @@ async fn main() -> std::io::Result<()> {
 
     println!("Server running at http://{}:{}", ip_address, port);
 
+    let effects_config = app_settings.effects.clone();
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(effect_queue.clone()))
+            .app_data(web::Data::new(effect_registry.clone()))
+            .app_data(web::Data::new(effects_config.clone()))
             .app_data(lume_state.clone())
             .app_data(web::Data::new(command_dispatcher.clone()))
+            .configure(endpoints::effects::config)
             .configure(endpoints::legacy::config)
             .configure(endpoints::google::config)
             .configure(endpoints::oauth::config)
