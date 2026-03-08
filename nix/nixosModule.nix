@@ -26,11 +26,19 @@
                                 else types.str;
                             default = value;
                         });
+                scalars =
+                    ../config/default.toml
+                    |> readFile
+                    |> fromTOML
+                    |> mapOptions;
             in
-                ../config/default.toml
-                |> readFile
-                |> fromTOML
-                |> mapOptions;
+                scalars
+                // {
+                    effects.presets = mkOption {
+                        type = types.attrsOf types.anything;
+                        default = {};
+                    };
+                };
         };
         config = mkIf cfg.enable {
             systemd.services.lumehub = {
