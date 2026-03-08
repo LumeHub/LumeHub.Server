@@ -1,4 +1,3 @@
-use crate::color::Rgb;
 use crate::controller::Controller;
 use crate::effects;
 use std::{thread, time::Duration};
@@ -8,31 +7,41 @@ pub fn spawn(
     rx: std::sync::mpsc::Receiver<Box<dyn effects::Effect + Send>>,
 ) {
     thread::spawn(move || {
-        let mut current_effect_iterator: Option<Box<dyn Iterator<Item = Vec<Rgb>> + Send>> = None;
+        let mut current_effect: Option<Box<dyn effects::Effect + Send>> = None;
+        let mut current_frame_iterator: Option<
+            Box<dyn Iterator<Item = Vec<crate::color::Rgb>> + Send + 'static>,
+        > = None;
 
         loop {
-            // Prioritize new effects from the queue
             if let Ok(new_effect) = rx.try_recv() {
-                current_effect_iterator = Some(new_effect.frames(led.as_pixel_slice()));
+                current_effect = Some(new_effect);
+                current_frame_iterator = None;
             }
 
-            // Process the current effect, if any
-            if let Some(ref mut effect_iter) = current_effect_iterator {
-                if let Some(frame) = effect_iter.next() {
-                    led.as_pixel_slice_mut().copy_from_slice(&frame);
-                    led.show();
-                } else {
-                    // Effect finished, clear it to allow waiting for a new one
-                    current_effect_iterator = None;
+            if let (None, Some(effect)) = (current_frame_iterator.as_ref(), current_effect.as_ref())
+            {
+                current_frame_iterator = Some(effect.frames(led.as_pixel_slice()));
+            }
+
+            match current_frame_iterator.as_mut().map(|iter| iter.next()) {
+                None => {
+                    if let Ok(effect) = rx.recv() {
+                        current_effect = Some(effect);
+                    }
+                    continue;
                 }
-            } else {
-                // No effect is active; block until a new one is received
-                if let Ok(initial_effect) = rx.recv() {
-                    current_effect_iterator = Some(initial_effect.frames(led.as_pixel_slice()));
+                Some(None) => {
+                    current_effect = None;
+                    current_frame_iterator = None;
+                }
+                Some(Some(frame)) => {
+                    if frame != led.as_pixel_slice() {
+                        led.as_pixel_slice_mut().copy_from_slice(&frame);
+                        led.show();
+                    }
                 }
             }
 
-            // Control frame rate
             thread::sleep(Duration::from_millis(10));
         }
     });
