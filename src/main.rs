@@ -2,6 +2,7 @@ mod color;
 mod controller;
 mod effects;
 mod endpoints;
+mod lume_service;
 mod settings;
 mod state;
 
@@ -10,6 +11,7 @@ use effects::EffectQueue;
 use settings::Settings;
 
 use controller::create_controller;
+use endpoints::google::commands::CommandDispatcher;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -26,20 +28,29 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    let (effect_queue, rx) = EffectQueue::new();
-    controller::effect_processor::spawn(led, rx);
+    let (effect_queue, rx_effect_processor) = EffectQueue::new();
+    let effect_registry = effects::build_registry();
 
     let lume_state = state::lume_app_data();
+    let command_dispatcher = CommandDispatcher::new();
+
+    controller::effect_processor::spawn(led, rx_effect_processor);
 
     let ip_address = app_settings.server.ip_address;
     let port = app_settings.server.port;
 
     println!("Server running at http://{}:{}", ip_address, port);
 
+    let effects_config = app_settings.effects.clone();
+
     HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(effect_queue.clone()))
+            .app_data(web::Data::new(effect_registry.clone()))
+            .app_data(web::Data::new(effects_config.clone()))
             .app_data(lume_state.clone())
+            .app_data(web::Data::new(command_dispatcher.clone()))
+            .configure(endpoints::effects::config)
             .configure(endpoints::legacy::config)
             .configure(endpoints::google::config)
             .configure(endpoints::oauth::config)

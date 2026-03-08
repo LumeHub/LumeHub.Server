@@ -7,21 +7,21 @@ use super::GoogleCommandWithParams;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OnOffParams {
-    pub on: bool,
+pub struct ColorLoopParams {
+    pub duration: u64,
 }
 
-pub struct OnOffCommand;
+pub struct ColorLoopCommand;
 
-impl GoogleCommandWithParams for OnOffCommand {
-    type Params = OnOffParams;
+impl GoogleCommandWithParams for ColorLoopCommand {
+    type Params = ColorLoopParams;
 
     fn command_type(&self) -> ExecuteCommandType {
-        ExecuteCommandType::OnOff
+        ExecuteCommandType::ColorLoop
     }
 
     fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        lume_service.set_on_off(params.on);
+        lume_service.start_color_loop(params.duration);
         Ok(())
     }
 }

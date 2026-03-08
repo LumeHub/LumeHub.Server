@@ -7,21 +7,21 @@ use super::GoogleCommandWithParams;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OnOffParams {
-    pub on: bool,
+pub struct SleepParams {
+    pub duration: u64,
 }
 
-pub struct OnOffCommand;
+pub struct SleepCommand;
 
-impl GoogleCommandWithParams for OnOffCommand {
-    type Params = OnOffParams;
+impl GoogleCommandWithParams for SleepCommand {
+    type Params = SleepParams;
 
     fn command_type(&self) -> ExecuteCommandType {
-        ExecuteCommandType::OnOff
+        ExecuteCommandType::Sleep
     }
 
     fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        lume_service.set_on_off(params.on);
+        lume_service.start_sleep_effect(params.duration);
         Ok(())
     }
 }

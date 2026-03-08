@@ -1,13 +1,13 @@
-use serde_json::json;
-
 use super::response::{Device, DeviceInfo, Name};
-use crate::state::LumeState;
+use crate::{
+    endpoints::google::{commands::color_absolute::ColorState, response::DeviceStates},
+    state::LumeState,
+};
 
 const DEVICE_ID: &str = "led-strip";
 
 pub trait GoogleDevice {
     fn sync(&self) -> Device;
-
     fn query(&self, state: &LumeState) -> serde_json::Value;
 }
 
@@ -21,6 +21,8 @@ impl GoogleDevice for LedStrip {
             traits: vec![
                 "action.devices.traits.OnOff".to_string(),
                 "action.devices.traits.ColorSetting".to_string(),
+                "action.devices.traits.Brightness".to_string(),
+                "action.devices.traits.LightEffects".to_string(),
             ],
             name: Name {
                 name: "LED Strip".to_string(),
@@ -35,12 +37,32 @@ impl GoogleDevice for LedStrip {
                 "colorTemperatureRange": {
                     "temperatureMinK": 2000,
                     "temperatureMaxK": 9000
-                }
+                },
+                "commandOnlyBrightness": false,
+                "supportedEffects": ["colorLoop", "sleep", "wake"],
+                "defaultColorLoopDuration": 1800,
+                "defaultSleepDuration": 1800,
+                "defaultWakeDuration": 1800
             })),
         }
     }
 
     fn query(&self, state: &LumeState) -> serde_json::Value {
-        json!({ "on": state.is_on, "online": true })
+        serde_json::to_value(device_states_from_lume_state(state)).unwrap()
+    }
+}
+
+pub fn device_states_from_lume_state(state: &LumeState) -> DeviceStates {
+    DeviceStates {
+        on: Some(state.is_on),
+        online: Some(true),
+        brightness: Some(state.brightness),
+        color: Some(ColorState {
+            spectrum_rgb: Some(state.active_color.to_spectrum()),
+            spectrum_hsv: None,
+            temperature_k: None,
+        }),
+        active_light_effect: state.active_light_effect.clone(),
+        light_effect_end_unix_timestamp_sec: state.light_effect_end_unix_timestamp_sec,
     }
 }

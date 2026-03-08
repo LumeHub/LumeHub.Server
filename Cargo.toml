@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 actix-web = "4.11.0"
+chrono = "0.4.42"
 clap = { version = "4.5.49", features = ["derive", "env"] }
 config = "0.15.18"
 hsv = "0.1.1"

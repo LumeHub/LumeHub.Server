@@ -7,21 +7,21 @@ use super::GoogleCommandWithParams;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct OnOffParams {
-    pub on: bool,
+pub struct BrightnessAbsoluteParams {
+    pub brightness: u8,
 }
 
-pub struct OnOffCommand;
+pub struct BrightnessAbsoluteCommand;
 
-impl GoogleCommandWithParams for OnOffCommand {
-    type Params = OnOffParams;
+impl GoogleCommandWithParams for BrightnessAbsoluteCommand {
+    type Params = BrightnessAbsoluteParams;
 
     fn command_type(&self) -> ExecuteCommandType {
-        ExecuteCommandType::OnOff
+        ExecuteCommandType::BrightnessAbsolute
     }
 
     fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        lume_service.set_on_off(params.on);
+        lume_service.set_brightness(params.brightness);
         Ok(())
     }
 }

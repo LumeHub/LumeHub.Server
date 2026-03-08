@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, de::DeserializeOwned};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -46,6 +46,19 @@ pub struct CommandRequest {
     pub execution: Vec<ExecutionRequest>,
 }
 
+impl CommandRequest {
+    pub fn get_params<T: DeserializeOwned>(&self) -> Result<T, String> {
+        let params_value = self
+            .execution
+            .first()
+            .ok_or_else(|| "badRequest".to_string())?
+            .params
+            .clone();
+
+        serde_json::from_value(params_value).map_err(|_| "badRequest".to_string())
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExecutionRequest {
@@ -57,6 +70,18 @@ pub struct ExecutionRequest {
 pub enum ExecuteCommandType {
     #[serde(rename = "action.devices.commands.OnOff")]
     OnOff,
+    #[serde(rename = "action.devices.commands.BrightnessAbsolute")]
+    BrightnessAbsolute,
     #[serde(rename = "action.devices.commands.ColorAbsolute")]
     ColorAbsolute,
+    #[serde(rename = "action.devices.commands.BrightnessRelative")]
+    BrightnessRelative,
+    #[serde(rename = "action.devices.commands.ColorLoop")]
+    ColorLoop,
+    #[serde(rename = "action.devices.commands.Sleep")]
+    Sleep,
+    #[serde(rename = "action.devices.commands.Wake")]
+    Wake,
+    #[serde(rename = "action.devices.commands.StopEffect")]
+    StopEffect,
 }
