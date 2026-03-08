@@ -1,12 +1,12 @@
 use std::sync::Mutex;
 
-use crate::{
-    color::Rgb,
-    effects::{EffectQueue, fade_color::FadeColor},
-    state::LumeState,
-};
 use actix_web::{HttpResponse, Responder, post, web};
 use serde::{Deserialize, Serialize};
+
+use crate::color::Rgb;
+use crate::effects::EffectQueue;
+use crate::lume_service::LumeService;
+use crate::state::LumeState;
 
 #[derive(Deserialize)]
 pub struct SetColorRequest {
@@ -40,21 +40,16 @@ pub async fn led_get_color(state: web::Data<Mutex<LumeState>>) -> impl Responder
 
 #[post("/led/setColor")]
 pub async fn led_set_color(
-    state: web::Data<Mutex<LumeState>>,
+    lume_state: web::Data<Mutex<LumeState>>,
     effect_queue: web::Data<EffectQueue>,
     req: web::Json<SetColorRequest>,
 ) -> impl Responder {
-    let mut state = state.lock().unwrap();
-    state.active_color = Rgb {
+    let color = Rgb {
         r: req.red,
         g: req.green,
         b: req.blue,
     };
-    if state.is_on {
-        let effect = FadeColor {
-            color: state.active_color,
-        };
-        effect_queue.enqueue(Box::new(effect));
-    }
+    LumeService::new(&lume_state, &effect_queue).set_color(color);
+    let state = lume_state.lock().unwrap();
     HttpResponse::Ok().json(LedColorResponse::from(state.active_color))
 }
