@@ -1,5 +1,6 @@
 use serde::Deserialize;
 
+use crate::endpoints::google::device::google_to_internal_brightness;
 use crate::lume_service::LumeService;
 
 use super::super::request::ExecuteCommandType;
@@ -21,7 +22,7 @@ impl GoogleCommandWithParams for BrightnessAbsoluteCommand {
     }
 
     fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        lume_service.set_brightness(params.brightness);
+        lume_service.set_brightness(google_to_internal_brightness(params.brightness));
         Ok(())
     }
 }

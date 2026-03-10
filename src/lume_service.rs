@@ -5,7 +5,7 @@ use std::sync::Mutex;
 use crate::color::Rgb;
 use crate::effects::EffectQueue;
 use crate::effects::color_loop::ColorLoop;
-use crate::effects::composite::{BRIGHTNESS, PRIMARY_COLOR};
+use crate::effects::composite::PRIMARY_COLOR;
 use crate::effects::fade_color::FadeColor;
 use crate::effects::sleep::Sleep;
 use crate::effects::wake::Wake;
@@ -31,7 +31,8 @@ impl<'a> LumeService<'a> {
         let mut state = self.lume_state.lock().unwrap();
         state.is_on = on;
         if let Some(bus) = &state.active_param_bus {
-            bus.set_scalar(BRIGHTNESS, if on { state.brightness as f32 } else { 0.0 });
+            bus.brightness
+                .set(if on { state.brightness as f32 } else { 0.0 });
             return;
         }
         state.active_light_effect = None;
@@ -46,7 +47,7 @@ impl<'a> LumeService<'a> {
         let mut state = self.lume_state.lock().unwrap();
         state.brightness = brightness;
         if let Some(bus) = &state.active_param_bus {
-            bus.set_scalar(BRIGHTNESS, brightness as f32);
+            bus.brightness.set(brightness as f32);
             return;
         }
         state.active_light_effect = None;

@@ -42,8 +42,12 @@ pub async fn led_get_color(state: web::Data<Mutex<LumeState>>) -> impl Responder
 pub async fn led_set_color(
     lume_state: web::Data<Mutex<LumeState>>,
     effect_queue: web::Data<EffectQueue>,
-    req: web::Json<SetColorRequest>,
+    body: web::Bytes,
 ) -> impl Responder {
+    let req: SetColorRequest = match serde_json::from_slice(&body) {
+        Ok(r) => r,
+        Err(e) => return HttpResponse::BadRequest().body(e.to_string()),
+    };
     let color = Rgb {
         r: req.red,
         g: req.green,
