@@ -100,13 +100,13 @@ impl EffectsConfig {
 
         // --- stock (embedded at compile time) ---
         for file in STOCK_FUNCTIONS.files() {
-            if file.path().extension().and_then(|e| e.to_str()) == Some("rhai") {
-                if let (Some(name), Some(code)) = (
+            if file.path().extension().and_then(|e| e.to_str()) == Some("rhai")
+                && let (Some(name), Some(code)) = (
                     file.path().file_stem().and_then(|s| s.to_str()),
                     file.contents_utf8(),
-                ) {
-                    functions.insert(name.to_string(), code.to_string());
-                }
+                )
+            {
+                functions.insert(name.to_string(), code.to_string());
             }
         }
         for file in STOCK_EFFECTS.files() {

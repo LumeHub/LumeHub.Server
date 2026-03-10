@@ -219,11 +219,11 @@ fn build_composite(
 
     // Apply animated signals from this preset and all referenced sub-presets.
     for (name, def) in &all_signals {
-        if let SignalDef::Script(code) = def {
-            if let Err(e) = bus.set_animated(name, code) {
-                return Err(HttpResponse::BadRequest()
-                    .body(format!("Preset signal '{}' script error: {}", name, e)));
-            }
+        if let SignalDef::Script(code) = def
+            && let Err(e) = bus.set_animated(name, code)
+        {
+            return Err(HttpResponse::BadRequest()
+                .body(format!("Preset signal '{}' script error: {}", name, e)));
         }
     }
 
@@ -279,10 +279,10 @@ pub async fn set_signal(
             }
         }
         SetSignalRequest::Script { code } => {
-            if let Some(bus) = &state.active_param_bus {
-                if let Err(e) = bus.set_animated(&signal_name, &code) {
-                    return HttpResponse::BadRequest().body(format!("script error: {}", e));
-                }
+            if let Some(bus) = &state.active_param_bus
+                && let Err(e) = bus.set_animated(&signal_name, &code)
+            {
+                return HttpResponse::BadRequest().body(format!("script error: {}", e));
             }
             state.signal_scripts.insert(signal_name, code);
         }
