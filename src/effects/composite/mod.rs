@@ -1,6 +1,7 @@
 pub mod live_param;
+pub mod signal_script;
 
-pub use live_param::{BRIGHTNESS, LiveParam, PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
+pub use live_param::{PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
 
 use std::sync::Arc;
 
@@ -8,20 +9,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::color::Rgb;
 use crate::effects::Effect;
-
-pub enum ColorSource {
-    Static(Rgb),
-    Live(LiveParam<Rgb>),
-}
-
-impl ColorSource {
-    pub fn get(&self) -> Rgb {
-        match self {
-            ColorSource::Static(c) => *c,
-            ColorSource::Live(p) => p.get(),
-        }
-    }
-}
 
 #[derive(Clone)]
 pub enum CompositeMode {
@@ -75,62 +62,42 @@ impl Effect for CompositeEffect {
             let composite =
                 layers
                     .iter()
-                    .fold(vec![Rgb::BLACK; len], |acc, (layer, mode, opacity)| {
-                        let frame = match opacity {
-                            Some(g) => apply_opacity(layer.render(len), *g),
-                            None => layer.render(len),
-                        };
-                        apply_mode(acc, frame, mode)
+                    .fold(vec![Rgb::BLACK; len], |base, (layer, mode, gradient)| {
+                        let overlay = layer.render(len);
+                        base.into_iter()
+                            .zip(overlay)
+                            .enumerate()
+                            .map(|(i, (b, o))| {
+                                let opacity = gradient.map_or(1.0, |g| pixel_opacity(g, i));
+                                match mode {
+                                    CompositeMode::Override => b.lerp(o, opacity),
+                                    CompositeMode::Add => Rgb {
+                                        r: b.r.saturating_add((o.r as f32 * opacity) as u8),
+                                        g: b.g.saturating_add((o.g as f32 * opacity) as u8),
+                                        b: b.b.saturating_add((o.b as f32 * opacity) as u8),
+                                    },
+                                }
+                            })
+                            .collect()
                     });
 
-            let composite = match bus.get_scalar(live_param::BRIGHTNESS) {
-                Some(b) => {
-                    let brightness = b.get().clamp(0.0, 100.0) as u8;
-                    composite
-                        .into_iter()
-                        .map(|c| c.with_brightness(brightness))
-                        .collect()
-                }
-                None => composite,
-            };
+            let brightness = bus.brightness.get() as u8;
+            let composite = composite
+                .into_iter()
+                .map(|c| c.with_brightness(brightness))
+                .collect();
 
             Some(composite)
         }))
     }
 }
 
-fn apply_opacity(frame: Vec<Rgb>, gradient: OpacityGradient) -> Vec<Rgb> {
-    if gradient.end_pixel <= gradient.start_pixel {
-        return frame;
+fn pixel_opacity(gradient: OpacityGradient, i: usize) -> f32 {
+    if i < gradient.start_pixel {
+        return 0.0;
     }
-    let range = (gradient.end_pixel - gradient.start_pixel) as f32;
-    frame
-        .into_iter()
-        .enumerate()
-        .map(|(i, c)| {
-            if i < gradient.start_pixel {
-                Rgb::BLACK
-            } else if i >= gradient.end_pixel {
-                c
-            } else {
-                let t = (i - gradient.start_pixel) as f32 / range;
-                Rgb::BLACK.lerp(c, t)
-            }
-        })
-        .collect()
-}
-
-fn apply_mode(base: Vec<Rgb>, overlay: Vec<Rgb>, mode: &CompositeMode) -> Vec<Rgb> {
-    match mode {
-        CompositeMode::Override => overlay,
-        CompositeMode::Add => base
-            .into_iter()
-            .zip(overlay)
-            .map(|(b, o)| Rgb {
-                r: b.r.saturating_add(o.r),
-                g: b.g.saturating_add(o.g),
-                b: b.b.saturating_add(o.b),
-            })
-            .collect(),
+    if gradient.end_pixel <= gradient.start_pixel || i >= gradient.end_pixel {
+        return 1.0;
     }
+    (i - gradient.start_pixel) as f32 / (gradient.end_pixel - gradient.start_pixel) as f32
 }

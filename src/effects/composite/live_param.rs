@@ -1,9 +1,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
 
+use super::signal_script::SignalScript;
+
 use crate::color::Rgb;
 
-pub const BRIGHTNESS: &str = "brightness";
 pub const PRIMARY_COLOR: &str = "primary_color";
 pub const SECONDARY_COLOR: &str = "secondary_color";
 
@@ -80,6 +81,12 @@ impl<T: Interpolatable> LiveParam<T> {
         self.inner.write().unwrap().target = target;
     }
 
+    pub fn set_immediate(&self, value: T) {
+        let mut inner = self.inner.write().unwrap();
+        inner.current = value.clone();
+        inner.target = value;
+    }
+
     pub fn get(&self) -> T {
         self.inner.read().unwrap().current.clone()
     }
@@ -94,50 +101,74 @@ impl<T: Interpolatable> LiveParam<T> {
 }
 
 pub struct ParameterBus {
-    colors: HashMap<String, LiveParam<Rgb>>,
-    scalars: HashMap<String, LiveParam<f32>>,
+    pub brightness: LiveParam<f32>,
+    /// Rhai function definitions prepended to every script layer as a prelude.
+    pub prelude: String,
+    colors: RwLock<HashMap<String, LiveParam<Rgb>>>,
+    animated: RwLock<HashMap<String, Arc<SignalScript>>>,
 }
 
 impl ParameterBus {
-    pub fn new(brightness: f32) -> Self {
-        let mut bus = ParameterBus {
-            colors: HashMap::new(),
-            scalars: HashMap::new(),
-        };
-        bus.register_scalar(BRIGHTNESS.to_string(), brightness, 1.0);
-        bus
+    pub fn new(brightness: f32, prelude: String) -> Self {
+        ParameterBus {
+            brightness: LiveParam::new(brightness, 1.0),
+            prelude,
+            colors: RwLock::new(HashMap::new()),
+            animated: RwLock::new(HashMap::new()),
+        }
     }
 
     pub fn register_color(&mut self, name: String, initial: Rgb, speed: f32) {
-        self.colors.insert(name, LiveParam::new(initial, speed));
+        self.colors
+            .write()
+            .unwrap()
+            .insert(name, LiveParam::new(initial, speed));
     }
 
-    pub fn register_scalar(&mut self, name: String, initial: f32, speed: f32) {
-        self.scalars.insert(name, LiveParam::new(initial, speed));
+    /// All color signals currently registered, cloned so they stay live.
+    pub fn all_colors(&self) -> Vec<(String, LiveParam<Rgb>)> {
+        self.colors
+            .read()
+            .unwrap()
+            .iter()
+            .map(|(k, v)| (k.clone(), v.clone()))
+            .collect()
     }
 
-    pub fn get_color(&self, name: &str) -> Option<LiveParam<Rgb>> {
-        self.colors.get(name).cloned()
-    }
-
-    pub fn get_scalar(&self, name: &str) -> Option<LiveParam<f32>> {
-        self.scalars.get(name).cloned()
-    }
-
+    /// Set a static color. Clears any animated script for this signal.
     pub fn set_color(&self, name: &str, value: Rgb) {
-        if let Some(p) = self.colors.get(name) {
+        let was_animated = self.animated.write().unwrap().remove(name).is_some();
+        let mut colors = self.colors.write().unwrap();
+        if was_animated {
+            // Replace the script's LiveParam with a fresh static one.
+            colors.insert(name.to_string(), LiveParam::new(value, 5.0));
+        } else if let Some(p) = colors.get(name) {
             p.set(value);
+        } else {
+            colors.insert(name.to_string(), LiveParam::new(value, 5.0));
         }
     }
 
-    pub fn set_scalar(&self, name: &str, value: f32) {
-        if let Some(p) = self.scalars.get(name) {
-            p.set(value);
-        }
+    /// Drive a color signal with a Rhai script evaluated every frame.
+    /// Script scope: `time` (f64), `frame` (i64), `pi`.
+    /// Returns the script code for persistence.
+    pub fn set_animated(&self, name: &str, code: &str) -> Result<(), String> {
+        let script = SignalScript::new(code)?;
+        let live = script.live.clone();
+        self.colors.write().unwrap().insert(name.to_string(), live);
+        self.animated
+            .write()
+            .unwrap()
+            .insert(name.to_string(), script);
+        Ok(())
     }
 
     pub fn tick(&self) {
-        self.colors.values().for_each(|p| p.tick());
-        self.scalars.values().for_each(|p| p.tick());
+        self.brightness.tick();
+        // Animated signals compute their color first so LiveParams are up to date.
+        for script in self.animated.read().unwrap().values() {
+            script.tick();
+        }
+        self.colors.read().unwrap().values().for_each(|p| p.tick());
     }
 }
