@@ -1,0 +1,9 @@
+# ocean as background, meteor_shower added on top.
+# meteor_shower's signals (meteor3, meteor4) are inherited automatically.
+
+[[layers]]
+effect = "ocean"
+
+[[layers]]
+effect = "meteor_shower"
+mode   = "add"

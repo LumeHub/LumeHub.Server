@@ -1,0 +1,11 @@
+[[layers]]
+effect = "plasma"
+
+[[layers]]
+effect = "script"
+mode   = "add"
+speed  = 0.04
+code   = """
+let b = 0.5 + 0.5 * sin(time * speed);
+rgb_f(pr * b, pg * b, pb * b)
+"""

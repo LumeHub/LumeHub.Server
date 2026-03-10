@@ -1,0 +1,8 @@
+[[layers]]
+effect    = "script"
+speed     = 0.08
+frequency = 0.4
+code      = """
+let brightness = 0.5 + 0.5 * sin(pixel.to_float() * frequency - time * speed);
+rgb_f(pr * brightness, pg * brightness, pb * brightness)
+"""
