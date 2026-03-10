@@ -8,7 +8,7 @@ mod state;
 
 use actix_web::{App, HttpServer, web};
 use effects::EffectQueue;
-use settings::Settings;
+use settings::{EffectsConfig, Settings};
 
 use controller::create_controller;
 use endpoints::google::commands::CommandDispatcher;
@@ -41,7 +41,7 @@ async fn main() -> std::io::Result<()> {
 
     println!("Server running at http://{}:{}", ip_address, port);
 
-    let effects_config = app_settings.effects.clone();
+    let effects_config = EffectsConfig::from_dir(&app_settings.config_dir);
 
     HttpServer::new(move || {
         App::new()
