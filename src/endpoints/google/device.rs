@@ -1,8 +1,5 @@
-use super::response::{Device, DeviceInfo, Name};
-use crate::{
-    endpoints::google::{commands::color_absolute::ColorState, response::DeviceStates},
-    state::LumeState,
-};
+use super::response::{ColorState, Device, DeviceInfo, DeviceStates, Name};
+use crate::state::LumeState;
 
 const DEVICE_ID: &str = "led-strip";
 

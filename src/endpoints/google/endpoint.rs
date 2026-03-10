@@ -80,19 +80,17 @@ fn handle_execute(
 ) -> ResponsePayload {
     let mut lume_service = crate::lume_service::LumeService::new(lume_state, effect_queue);
 
-    let command_responses = if let Some(payload) = input.payload.as_ref() {
-        if let Some(commands_vec) = payload.commands.as_ref() {
-            let mut responses = Vec::new();
-            for cmd_req in commands_vec.iter() {
-                responses.extend(command_dispatcher.process_command(cmd_req, &mut lume_service));
-            }
-            responses
-        } else {
-            Vec::new()
-        }
-    } else {
-        Vec::new()
-    };
+    let command_responses = input
+        .payload
+        .as_ref()
+        .and_then(|p| p.commands.as_ref())
+        .map(|commands| {
+            commands
+                .iter()
+                .flat_map(|cmd| command_dispatcher.process_command(cmd, &mut lume_service))
+                .collect()
+        })
+        .unwrap_or_default();
 
     ResponsePayload::Execute(ExecuteResponse {
         commands: command_responses,

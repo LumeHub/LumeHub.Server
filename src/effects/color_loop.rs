@@ -14,7 +14,7 @@ impl Effect for ColorLoop {
         colors.insert(0, self.start_color);
 
         let num_colors = colors.len();
-        let frames_per_color = 50;
+        const FRAMES_PER_TRANSITION: usize = 50;
         let total_frames = (self.duration * 60) as usize;
 
         let mut frame_count = 0;
@@ -23,9 +23,10 @@ impl Effect for ColorLoop {
                 return None;
             }
 
-            let current_color_idx = (frame_count / frames_per_color) % num_colors;
+            let current_color_idx = (frame_count / FRAMES_PER_TRANSITION) % num_colors;
             let next_color_idx = (current_color_idx + 1) % num_colors;
-            let progress = (frame_count % frames_per_color) as f32 / frames_per_color as f32;
+            let progress =
+                (frame_count % FRAMES_PER_TRANSITION) as f32 / FRAMES_PER_TRANSITION as f32;
 
             let interpolated_color =
                 Rgb::lerp(&colors[current_color_idx], colors[next_color_idx], progress);

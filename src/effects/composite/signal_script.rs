@@ -1,22 +1,11 @@
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use rhai::{AST, Dynamic, Engine, Map, Scope};
+use rhai::{AST, Dynamic, Engine, Scope};
 
 use super::live_param::LiveParam;
 use crate::color::Rgb;
-
-fn rgb_map(r: u8, g: u8, b: u8) -> Map {
-    let mut map = Map::new();
-    map.insert("r".into(), Dynamic::from(r as i64));
-    map.insert("g".into(), Dynamic::from(g as i64));
-    map.insert("b".into(), Dynamic::from(b as i64));
-    map
-}
-
-fn map_get(m: &Map, k: &str) -> i64 {
-    m.get(k).and_then(|v| v.as_int().ok()).unwrap_or(0)
-}
+use crate::effects::rhai::{map_get, parse_color, rgb_map};
 
 fn make_engine() -> Engine {
     let mut engine = Engine::new();
@@ -38,25 +27,25 @@ fn make_engine() -> Engine {
     engine.register_fn("min", |a: f64, b: f64| -> f64 { a.min(b) });
     engine.register_fn("max", |a: f64, b: f64| -> f64 { a.max(b) });
 
-    engine.register_fn("rgb", |r: i64, g: i64, b: i64| -> Map {
+    engine.register_fn("rgb", |r: i64, g: i64, b: i64| -> rhai::Map {
         rgb_map(
             r.clamp(0, 255) as u8,
             g.clamp(0, 255) as u8,
             b.clamp(0, 255) as u8,
         )
     });
-    engine.register_fn("rgb_f", |r: f64, g: f64, b: f64| -> Map {
+    engine.register_fn("rgb_f", |r: f64, g: f64, b: f64| -> rhai::Map {
         rgb_map(
             (r.clamp(0.0, 1.0) * 255.0) as u8,
             (g.clamp(0.0, 1.0) * 255.0) as u8,
             (b.clamp(0.0, 1.0) * 255.0) as u8,
         )
     });
-    engine.register_fn("from_hue", |h: f64| -> Map {
+    engine.register_fn("from_hue", |h: f64| -> rhai::Map {
         let c = Rgb::from_hue(h as f32);
         rgb_map(c.r, c.g, c.b)
     });
-    engine.register_fn("dim", |c: Map, scale: f64| -> Map {
+    engine.register_fn("dim", |c: rhai::Map, scale: f64| -> rhai::Map {
         let scale = scale.clamp(0.0, 1.0);
         rgb_map(
             (map_get(&c, "r") as f64 * scale) as u8,
@@ -64,7 +53,7 @@ fn make_engine() -> Engine {
             (map_get(&c, "b") as f64 * scale) as u8,
         )
     });
-    engine.register_fn("blend", |a: Map, b: Map, t: f64| -> Map {
+    engine.register_fn("blend", |a: rhai::Map, b: rhai::Map, t: f64| -> rhai::Map {
         let t = t.clamp(0.0, 1.0);
         let lerp = |x: i64, y: i64| (x as f64 + (y as f64 - x as f64) * t) as u8;
         rgb_map(
@@ -77,22 +66,9 @@ fn make_engine() -> Engine {
     engine
 }
 
-fn parse_color(val: Dynamic) -> Rgb {
-    if val.is_map() {
-        let map = val.cast::<Map>();
-        Rgb {
-            r: map_get(&map, "r").clamp(0, 255) as u8,
-            g: map_get(&map, "g").clamp(0, 255) as u8,
-            b: map_get(&map, "b").clamp(0, 255) as u8,
-        }
-    } else {
-        Rgb::BLACK
-    }
-}
-
-/// A Rhai script that computes a color each frame.
-/// Scope: `time` (f64 frame counter), `frame` (i64), `pi`.
-/// Returns a color map via rgb(), rgb_f(), from_hue(), etc.
+/// A Rhai script that drives a single color signal. Evaluated once per frame.
+/// Scope: `time` (f64), `frame` (i64), `pi`.
+/// Must return a color map via rgb(), rgb_f(), from_hue(), etc.
 pub struct SignalScript {
     engine: Engine,
     ast: AST,

@@ -1,7 +1,6 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
-use actix_web::web;
 use serde::Serialize;
 
 use crate::color::Rgb;
@@ -36,8 +35,4 @@ impl Default for LumeState {
             active_param_bus: None,
         }
     }
-}
-
-pub fn lume_app_data() -> web::Data<Mutex<LumeState>> {
-    web::Data::new(Mutex::new(LumeState::default()))
 }

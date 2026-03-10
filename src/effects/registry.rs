@@ -7,7 +7,7 @@ use crate::effects::composite::LayerEffect;
 use crate::effects::composite::ParameterBus;
 
 pub type LayerBuilder =
-    fn(Value, Arc<ParameterBus>) -> Result<Arc<dyn LayerEffect>, EffectBuildError>;
+    fn(Value, Arc<ParameterBus>, &str) -> Result<Arc<dyn LayerEffect>, EffectBuildError>;
 
 #[derive(Debug)]
 pub struct EffectBuildError(pub String);
@@ -27,11 +27,12 @@ impl EffectRegistry {
         name: &str,
         params: Value,
         bus: Arc<ParameterBus>,
+        prelude: &str,
     ) -> Result<Arc<dyn LayerEffect>, EffectBuildError> {
         let builder = self
             .layer_builders
             .get(name)
             .ok_or_else(|| EffectBuildError(format!("unknown layer effect: {}", name)))?;
-        builder(params, bus)
+        builder(params, bus, prelude)
     }
 }

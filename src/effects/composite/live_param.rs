@@ -102,17 +102,14 @@ impl<T: Interpolatable> LiveParam<T> {
 
 pub struct ParameterBus {
     pub brightness: LiveParam<f32>,
-    /// Rhai function definitions prepended to every script layer as a prelude.
-    pub prelude: String,
     colors: RwLock<HashMap<String, LiveParam<Rgb>>>,
     animated: RwLock<HashMap<String, Arc<SignalScript>>>,
 }
 
 impl ParameterBus {
-    pub fn new(brightness: f32, prelude: String) -> Self {
+    pub fn new(brightness: f32) -> Self {
         ParameterBus {
             brightness: LiveParam::new(brightness, 1.0),
-            prelude,
             colors: RwLock::new(HashMap::new()),
             animated: RwLock::new(HashMap::new()),
         }

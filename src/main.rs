@@ -8,7 +8,8 @@ mod state;
 
 use actix_web::{App, HttpServer, web};
 use effects::EffectQueue;
-use settings::{EffectsConfig, Settings};
+use effects::config::EffectsConfig;
+use settings::Settings;
 
 use controller::create_controller;
 use endpoints::google::commands::CommandDispatcher;
@@ -21,7 +22,6 @@ async fn main() -> std::io::Result<()> {
         Ok(controller) => controller,
         Err(e) => {
             eprintln!("Error creating LED controller: {}", e);
-            // Fallback to a console controller or exit
             Box::new(controller::drivers::console::Console::new(
                 app_settings.led_controller.pixel_count,
             ))
@@ -31,7 +31,7 @@ async fn main() -> std::io::Result<()> {
     let (effect_queue, rx_effect_processor) = EffectQueue::new();
     let effect_registry = effects::build_registry();
 
-    let lume_state = state::lume_app_data();
+    let lume_state = web::Data::new(std::sync::Mutex::new(state::LumeState::default()));
     let command_dispatcher = CommandDispatcher::new();
 
     controller::effect_processor::spawn(led, rx_effect_processor);

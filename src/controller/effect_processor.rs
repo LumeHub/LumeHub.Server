@@ -20,7 +20,7 @@ pub fn spawn(
 
             if let (None, Some(effect)) = (current_frame_iterator.as_ref(), current_effect.as_ref())
             {
-                current_frame_iterator = Some(effect.frames(led.as_pixel_slice()));
+                current_frame_iterator = Some(effect.frames(led.pixels()));
             }
 
             match current_frame_iterator.as_mut().map(|iter| iter.next()) {
@@ -35,8 +35,8 @@ pub fn spawn(
                     current_frame_iterator = None;
                 }
                 Some(Some(frame)) => {
-                    if frame != led.as_pixel_slice() {
-                        led.as_pixel_slice_mut().copy_from_slice(&frame);
+                    if frame != led.pixels() {
+                        led.pixels_mut().copy_from_slice(&frame);
                         led.show();
                     }
                 }

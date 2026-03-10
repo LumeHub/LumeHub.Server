@@ -1,10 +1,13 @@
 use crate::color::Rgb;
 
+pub mod builder;
 pub mod color_loop;
 pub mod composite;
+pub mod config;
 pub mod fade_color;
 pub mod queue;
 pub mod registry;
+pub mod rhai;
 pub mod script;
 pub mod sleep;
 pub mod wake;
