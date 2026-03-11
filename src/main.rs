@@ -51,6 +51,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(effects_config.clone()))
             .app_data(lume_state.clone())
             .app_data(web::Data::new(command_dispatcher.clone()))
+            .configure(endpoints::device::config)
             .configure(endpoints::effects::config)
             .configure(endpoints::legacy::config)
             .configure(endpoints::google::config)
