@@ -102,6 +102,7 @@ pub fn build_composite(
     initial_color: Rgb,
     signal_colors: &HashMap<String, Rgb>,
     initial_brightness: u8,
+    brightness_speed: f32,
     prelude: String,
     all_presets: &HashMap<String, EffectPreset>,
 ) -> Result<(CompositeEffect, Arc<ParameterBus>), String> {
@@ -142,7 +143,7 @@ pub fn build_composite(
     }
 
     let bus = signal_defs.into_iter().fold(
-        ParameterBus::new(initial_brightness as f32),
+        ParameterBus::new(initial_brightness as f32, brightness_speed),
         |mut bus, (name, (initial, speed))| {
             bus.register_color(name, initial, speed);
             bus

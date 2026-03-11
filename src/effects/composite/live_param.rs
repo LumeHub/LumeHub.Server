@@ -104,14 +104,17 @@ pub struct ParameterBus {
     pub brightness: LiveParam<f32>,
     colors: RwLock<HashMap<String, LiveParam<Rgb>>>,
     animated: RwLock<HashMap<String, Arc<SignalScript>>>,
+    transition_frames: usize,
 }
 
 impl ParameterBus {
-    pub fn new(brightness: f32) -> Self {
+    pub fn new(brightness: f32, brightness_speed: f32) -> Self {
+        let transition_frames = (255.0 / brightness_speed.max(1.0)).round() as usize;
         ParameterBus {
-            brightness: LiveParam::new(brightness, 1.0),
+            brightness: LiveParam::new(brightness, brightness_speed),
             colors: RwLock::new(HashMap::new()),
             animated: RwLock::new(HashMap::new()),
+            transition_frames,
         }
     }
 
@@ -137,8 +140,11 @@ impl ParameterBus {
         let was_animated = self.animated.write().unwrap().remove(name).is_some();
         let mut colors = self.colors.write().unwrap();
         if was_animated {
-            // Replace the script's LiveParam with a fresh static one.
-            colors.insert(name.to_string(), LiveParam::new(value, 5.0));
+            // Start from the current animated value so the transition is smooth.
+            let current = colors.get(name).map(|p| p.get()).unwrap_or(Rgb::BLACK);
+            let param = LiveParam::new(current, 5.0);
+            param.set(value);
+            colors.insert(name.to_string(), param);
         } else if let Some(p) = colors.get(name) {
             p.set(value);
         } else {
@@ -148,9 +154,15 @@ impl ParameterBus {
 
     /// Drive a color signal with a Rhai script evaluated every frame.
     /// Script scope: `time` (f64), `frame` (i64), `pi`.
-    /// Returns the script code for persistence.
     pub fn set_animated(&self, name: &str, code: &str) -> Result<(), String> {
-        let script = SignalScript::new(code)?;
+        let current = self
+            .colors
+            .read()
+            .unwrap()
+            .get(name)
+            .map(|p| p.get())
+            .unwrap_or(Rgb::BLACK);
+        let script = SignalScript::new(code, current, self.transition_frames)?;
         let live = script.live.clone();
         self.colors.write().unwrap().insert(name.to_string(), live);
         self.animated

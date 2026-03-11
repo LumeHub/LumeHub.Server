@@ -16,17 +16,21 @@ pub struct SignalScript {
     ast: AST,
     pub live: LiveParam<Rgb>,
     frame: AtomicU64,
+    from_color: Rgb,
+    fade_frames: usize,
 }
 
 impl SignalScript {
-    pub fn new(code: &str) -> Result<Arc<Self>, String> {
+    pub fn new(code: &str, from_color: Rgb, fade_frames: usize) -> Result<Arc<Self>, String> {
         let engine = make_signal_engine();
         let ast = engine.compile(code).map_err(|e| e.to_string())?;
         Ok(Arc::new(Self {
             engine,
             ast,
-            live: LiveParam::new(Rgb::BLACK, f32::MAX),
+            live: LiveParam::new(from_color, f32::MAX),
             frame: AtomicU64::new(0),
+            from_color,
+            fade_frames,
         }))
     }
 
@@ -36,12 +40,18 @@ impl SignalScript {
         scope.push("time", frame as f64);
         scope.push("frame", frame as i64);
         scope.push("pi", std::f64::consts::PI);
-        let color = match self
+        let script_color = match self
             .engine
             .eval_ast_with_scope::<rhai::Dynamic>(&mut scope, &self.ast)
         {
             Ok(val) => parse_color(val),
             Err(_) => Rgb::BLACK,
+        };
+        let color = if self.fade_frames > 0 && (frame as usize) < self.fade_frames {
+            let t = (frame as f32 + 1.0) / self.fade_frames as f32;
+            self.from_color.lerp(script_color, t)
+        } else {
+            script_color
         };
         self.live.set_immediate(color);
     }

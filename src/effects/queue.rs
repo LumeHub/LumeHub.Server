@@ -21,6 +21,10 @@ impl EffectQueue {
         )
     }
 
+    pub fn brightness_speed(&self) -> f32 {
+        255.0 / self.crossfade_frames.max(1) as f32
+    }
+
     pub fn enqueue(&self, effect: Box<dyn Effect + Send>) {
         let wrapped: Box<dyn Effect + Send> = if self.crossfade_frames > 0 {
             Box::new(FadeIn {
