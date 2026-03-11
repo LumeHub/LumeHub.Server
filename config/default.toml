@@ -9,3 +9,6 @@ crossfade_ms = 300
 [server]
 ip_address = "127.0.0.1"
 port = 5000
+
+[effects]
+presets = {}
