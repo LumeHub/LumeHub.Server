@@ -6,8 +6,8 @@ use crate::color::Rgb;
 use crate::effects::EffectQueue;
 use crate::effects::color_loop::ColorLoop;
 use crate::effects::composite::PRIMARY_COLOR;
-use crate::effects::fade_color::FadeColor;
 use crate::effects::sleep::Sleep;
+use crate::effects::solid_color::SolidColor;
 use crate::effects::wake::Wake;
 use crate::state::LumeState;
 
@@ -38,7 +38,7 @@ impl<'a> LumeService<'a> {
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
         let color = if on { state.active_color } else { Rgb::BLACK };
-        self.effect_queue.enqueue(Box::new(FadeColor {
+        self.effect_queue.enqueue(Box::new(SolidColor {
             color: color.with_brightness(state.brightness),
         }));
     }
@@ -52,7 +52,7 @@ impl<'a> LumeService<'a> {
         }
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
-        self.effect_queue.enqueue(Box::new(FadeColor {
+        self.effect_queue.enqueue(Box::new(SolidColor {
             color: state.active_color.with_brightness(brightness),
         }));
     }
@@ -67,7 +67,7 @@ impl<'a> LumeService<'a> {
         }
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
-        self.effect_queue.enqueue(Box::new(FadeColor {
+        self.effect_queue.enqueue(Box::new(SolidColor {
             color: color.with_brightness(state.brightness),
         }));
     }
@@ -80,9 +80,6 @@ impl<'a> LumeService<'a> {
         state.active_param_bus = None;
         let start_color = state.active_color;
 
-        self.effect_queue.enqueue(Box::new(FadeColor {
-            color: start_color.with_brightness(state.brightness),
-        }));
         self.effect_queue.enqueue(Box::new(ColorLoop {
             duration,
             start_color,
@@ -105,9 +102,6 @@ impl<'a> LumeService<'a> {
         state.light_effect_end_unix_timestamp_sec = Some(Utc::now().timestamp() as u64 + duration);
         state.active_param_bus = None;
         let start_brightness = state.brightness;
-        self.effect_queue.enqueue(Box::new(FadeColor {
-            color: state.active_color.with_brightness(start_brightness),
-        }));
         self.effect_queue.enqueue(Box::new(Sleep {
             duration,
             start_brightness,
@@ -124,9 +118,6 @@ impl<'a> LumeService<'a> {
         let end_brightness = state.brightness;
         let start_color = state.active_color;
 
-        self.effect_queue.enqueue(Box::new(FadeColor {
-            color: start_color.with_brightness(0),
-        }));
         self.effect_queue.enqueue(Box::new(Wake {
             duration,
             end_brightness,
@@ -139,7 +130,7 @@ impl<'a> LumeService<'a> {
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
         state.active_param_bus = None;
-        self.effect_queue.enqueue(Box::new(FadeColor {
+        self.effect_queue.enqueue(Box::new(SolidColor {
             color: state.active_color.with_brightness(state.brightness),
         }));
     }

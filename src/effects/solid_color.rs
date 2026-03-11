@@ -1,15 +1,14 @@
 use crate::color::Rgb;
 use crate::effects::Effect;
 
-pub struct FadeColor {
+pub struct SolidColor {
     pub color: Rgb,
 }
 
-impl Effect for FadeColor {
+impl Effect for SolidColor {
     fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static> {
-        let start_color = pixels[0];
         let len = pixels.len();
-
-        Box::new(Rgb::interpolate(start_color, self.color, 5).map(move |c| vec![c; len]))
+        let color = self.color;
+        Box::new(std::iter::repeat_with(move || vec![color; len]))
     }
 }
