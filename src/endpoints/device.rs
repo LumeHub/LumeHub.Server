@@ -3,10 +3,10 @@ use std::sync::Mutex;
 use actix_web::{HttpResponse, Responder, get, patch, web};
 use serde::{Deserialize, Serialize};
 
-use crate::color::Rgb;
 use crate::effects::EffectQueue;
 use crate::lume_service::LumeService;
 use crate::state::LumeState;
+use domain::Rgb;
 
 #[derive(Serialize)]
 struct DeviceStateResponse {

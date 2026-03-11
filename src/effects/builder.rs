@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::color::Rgb;
 use crate::effects::composite::{CompositeEffect, CompositeLayer, CompositeMode};
 use crate::effects::composite::{PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
 use crate::effects::config::{EffectPreset, LayerPreset, SignalDef};
 use crate::effects::registry::EffectRegistry;
+use domain::Rgb;
 
 pub fn build_prelude(functions: &HashMap<String, String>) -> String {
     functions.values().cloned().collect::<Vec<_>>().join("\n")

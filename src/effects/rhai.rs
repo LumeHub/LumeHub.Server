@@ -1,6 +1,6 @@
 use rhai::Dynamic;
 
-use crate::color::Rgb;
+use domain::Rgb;
 
 pub fn parse_color(val: Dynamic) -> Rgb {
     if val.is::<Rgb>() {

@@ -2,7 +2,6 @@ use actix_web::web;
 use chrono::Utc;
 use std::sync::Mutex;
 
-use crate::color::Rgb;
 use crate::effects::EffectQueue;
 use crate::effects::color_loop::ColorLoop;
 use crate::effects::composite::live_param::PRIMARY_COLOR;
@@ -11,6 +10,7 @@ use crate::effects::sleep::Sleep;
 use crate::effects::solid_color::SolidColor;
 use crate::effects::wake::Wake;
 use crate::state::LumeState;
+use domain::Rgb;
 
 pub struct LumeService<'a> {
     pub lume_state: &'a web::Data<Mutex<LumeState>>,

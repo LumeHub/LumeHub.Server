@@ -1,5 +1,5 @@
-use crate::color::Rgb;
 use crate::effects::Effect;
+use domain::Rgb;
 
 pub struct Halt;
 

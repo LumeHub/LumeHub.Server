@@ -1,6 +1,6 @@
 use rhai::Engine;
 
-use crate::color::Rgb;
+use domain::Rgb;
 
 pub fn heat_color(v: f32) -> Rgb {
     let v = v.clamp(0.0, 1.0);
@@ -94,7 +94,7 @@ fn register_color(engine: &mut Engine) {
     engine.register_fn("blend", |a: Rgb, b: Rgb, t: f64| -> Rgb {
         a.lerp(b, t.clamp(0.0, 1.0) as f32)
     });
-    engine.register_fn("add_colors", |a: Rgb, b: Rgb| -> Rgb { a.add(b) });
+    engine.register_fn("add_colors", |a: Rgb, b: Rgb| -> Rgb { a + b });
 }
 
 pub fn make_script_engine() -> Engine {

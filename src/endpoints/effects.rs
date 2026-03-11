@@ -4,7 +4,6 @@ use std::sync::Mutex;
 use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
 use serde::{Deserialize, Serialize};
 
-use crate::color::Rgb;
 use crate::effects::EffectQueue;
 use crate::effects::builder::{build_composite, build_prelude};
 use crate::effects::composite::PRIMARY_COLOR;
@@ -12,6 +11,7 @@ use crate::effects::config::{EffectPreset, EffectsConfig};
 use crate::effects::registry::EffectRegistry;
 use crate::lume_service::LumeService;
 use crate::state::LumeState;
+use domain::Rgb;
 
 #[derive(Serialize)]
 struct PresetsResponse<'a> {

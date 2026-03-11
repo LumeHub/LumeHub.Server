@@ -69,14 +69,6 @@ impl Rgb {
         }
     }
 
-    pub fn add(self, other: Rgb) -> Self {
-        Rgb {
-            r: self.r.saturating_add(other.r),
-            g: self.g.saturating_add(other.g),
-            b: self.b.saturating_add(other.b),
-        }
-    }
-
     pub fn with_brightness(&self, brightness: u8) -> Self {
         let scale = brightness as f32 / 255.0;
         Rgb {
@@ -138,6 +130,17 @@ impl Rgb {
             r: r as u8,
             g: g as u8,
             b: b as u8,
+        }
+    }
+}
+
+impl std::ops::Add for Rgb {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Rgb {
+            r: self.r.saturating_add(rhs.r),
+            g: self.g.saturating_add(rhs.g),
+            b: self.b.saturating_add(rhs.b),
         }
     }
 }

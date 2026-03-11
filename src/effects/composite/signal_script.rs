@@ -4,9 +4,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use rhai::{AST, Engine, Scope};
 
 use super::live_param::LiveParam;
-use crate::color::Rgb;
 use crate::effects::builtins::make_signal_engine;
 use crate::effects::rhai::parse_color;
+use domain::Rgb;
 
 /// A Rhai script that drives a single color signal. Evaluated once per frame.
 /// Scope: `time` (f64), `frame` (i64), `pi`.

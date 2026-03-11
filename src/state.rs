@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::color::Rgb;
 use crate::effects::composite::ParameterBus;
+use domain::Rgb;
 
 #[derive(Serialize, Clone)]
 pub struct LumeState {

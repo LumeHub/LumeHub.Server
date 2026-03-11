@@ -1,5 +1,5 @@
-use crate::color::Rgb;
 use crate::{controller::Controller, impl_pixel_access_for_controller};
+use domain::Rgb;
 use std::io::{self, Write};
 
 pub struct Console {

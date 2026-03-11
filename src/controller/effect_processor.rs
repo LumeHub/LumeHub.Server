@@ -1,6 +1,6 @@
-use crate::color::Rgb;
 use crate::controller::Controller;
 use crate::effects;
+use domain::Rgb;
 use std::thread;
 use std::time::{Duration, Instant};
 

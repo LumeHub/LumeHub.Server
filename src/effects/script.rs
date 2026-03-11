@@ -6,12 +6,12 @@ use rhai::{AST, Engine, Scope};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::color::Rgb;
 use crate::effects::builtins::make_script_engine;
 use crate::effects::composite::live_param::{PRIMARY_COLOR, SECONDARY_COLOR};
 use crate::effects::composite::{LayerEffect, ParameterBus};
 use crate::effects::registry::{EffectBuildError, EffectRegistry};
 use crate::effects::rhai::parse_color;
+use domain::Rgb;
 
 #[derive(Deserialize)]
 struct ScriptParams {

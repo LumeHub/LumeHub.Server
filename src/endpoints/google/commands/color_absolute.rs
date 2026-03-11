@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
-use crate::color::Rgb;
 use crate::lume_service::LumeService;
+use domain::Rgb;
 use hsv::hsv_to_rgb;
 
 use super::super::request::ExecuteCommandType;

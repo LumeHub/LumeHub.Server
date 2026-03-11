@@ -1,4 +1,4 @@
-use crate::color::Rgb;
+use domain::Rgb;
 
 pub mod builder;
 pub mod builtins;

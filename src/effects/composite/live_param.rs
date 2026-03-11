@@ -3,7 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use super::signal_script::SignalScript;
 
-use crate::color::Rgb;
+use domain::Rgb;
 
 pub const PRIMARY_COLOR: &str = "primary_color";
 pub const SECONDARY_COLOR: &str = "secondary_color";

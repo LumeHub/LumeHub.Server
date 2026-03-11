@@ -1,8 +1,8 @@
 pub mod drivers;
 pub mod effect_processor;
 
-use crate::color::Rgb;
 use crate::settings::{ControllerType, LedControllerConfig};
+use domain::Rgb;
 use drivers::{console::Console, ws2801::Ws2801};
 
 #[macro_export]

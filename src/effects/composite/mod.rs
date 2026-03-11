@@ -7,8 +7,8 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::color::Rgb;
 use crate::effects::Effect;
+use domain::Rgb;
 
 #[derive(Clone)]
 pub enum CompositeMode {
