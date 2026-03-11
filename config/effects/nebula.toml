@@ -1,0 +1,13 @@
+# Cosmic nebula — aurora pattern shifted into deep purples, magentas and blues.
+[[layers]]
+effect = "script"
+code   = """
+let p  = pixel.to_float();
+let w1 = sin(p * 0.07  + time * 0.016) * 0.5 + 0.5;
+let w2 = sin(p * 0.04  - time * 0.010 + 2.3) * 0.5 + 0.5;
+let w3 = sin(p * 0.11  + time * 0.013 + 5.1) * 0.5 + 0.5;
+let w4 = sin(p * 0.028 - time * 0.007 + 3.7) * 0.5 + 0.5;
+let intensity = pow((w1 * w2 + w3 * w4) / 2.0, 1.8);
+let hue = 260.0 + w1 * 60.0 - w3 * 50.0;
+dim(from_hue(hue), intensity)
+"""

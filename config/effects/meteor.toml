@@ -1,5 +1,0 @@
-[[layers]]
-effect = "script"
-speed  = 0.5
-tail   = 20.0
-code   = "dim(rgb_f(pr, pg, pb), meteor_factor(pixel, len, time, speed, tail, 0.0))"
