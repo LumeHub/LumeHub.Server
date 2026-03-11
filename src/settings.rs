@@ -18,6 +18,7 @@ pub struct LedControllerConfig {
     pub spi_path: Option<String>,
     pub freq_hz: Option<u32>,
     pub latch_time_micros: Option<u64>,
+    pub crossfade_ms: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

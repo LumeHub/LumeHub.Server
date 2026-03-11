@@ -1,9 +1,10 @@
+use crate::color::Rgb;
 use crate::controller::Controller;
 use crate::effects;
 use std::thread;
 use std::time::{Duration, Instant};
 
-const FRAME_DURATION: Duration = Duration::from_millis(16); // ~60fps ceiling
+const FRAME_DURATION: Duration = Duration::from_millis(16);
 
 pub fn spawn(
     mut led: Box<dyn Controller>,
@@ -12,7 +13,7 @@ pub fn spawn(
     thread::spawn(move || {
         let mut current_effect: Option<Box<dyn effects::Effect + Send>> = None;
         let mut current_frame_iterator: Option<
-            Box<dyn Iterator<Item = Vec<crate::color::Rgb>> + Send + 'static>,
+            Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static>,
         > = None;
 
         loop {
@@ -40,7 +41,7 @@ pub fn spawn(
                     current_frame_iterator = None;
                 }
                 Some(Some(frame)) => {
-                    if frame != led.pixels() {
+                    if frame.as_slice() != led.pixels() {
                         led.pixels_mut().copy_from_slice(&frame);
                         led.show();
                     }

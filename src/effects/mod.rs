@@ -6,6 +6,7 @@ pub mod color_loop;
 pub mod composite;
 pub mod config;
 pub mod fade_color;
+pub mod fade_in;
 pub mod queue;
 pub mod registry;
 pub mod rhai;
