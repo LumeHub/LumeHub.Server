@@ -1,0 +1,11 @@
+[[layers]]
+effect = "script"
+speed1 = 0.3
+speed2 = 0.7
+w1     = 5.0
+w2     = 4.0
+code   = """
+let b1 = scanner_factor(pixel, len, time, speed1, w1);
+let b2 = scanner_factor(pixel, len, time, speed2, w2);
+add_colors(dim(primary_color, b1), dim(secondary_color, b2))
+"""

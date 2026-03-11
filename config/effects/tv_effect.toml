@@ -1,0 +1,11 @@
+[[layers]]
+effect     = "script"
+fade_start = 35.0
+fade_end   = 50.0
+code       = """
+let pf = pixel.to_float();
+if pf < fade_start { return rgb(0, 0, 0); }
+if pf >= fade_end  { return rgb_f(pr, pg, pb); }
+let opacity = (pf - fade_start) / (fade_end - fade_start);
+rgb_f(pr * opacity, pg * opacity, pb * opacity)
+"""

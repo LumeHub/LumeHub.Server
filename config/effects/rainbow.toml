@@ -1,0 +1,7 @@
+[[layers]]
+effect = "script"
+speed  = 1.5
+code   = """
+let hue_offset = (time * speed) % 360.0;
+from_hue(pixel.to_float() / len.to_float() * 360.0 + hue_offset)
+"""

@@ -8,6 +8,7 @@ mod state;
 
 use actix_web::{App, HttpServer, web};
 use effects::EffectQueue;
+use effects::config::EffectsConfig;
 use settings::Settings;
 
 use controller::create_controller;
@@ -21,17 +22,17 @@ async fn main() -> std::io::Result<()> {
         Ok(controller) => controller,
         Err(e) => {
             eprintln!("Error creating LED controller: {}", e);
-            // Fallback to a console controller or exit
             Box::new(controller::drivers::console::Console::new(
                 app_settings.led_controller.pixel_count,
             ))
         }
     };
 
-    let (effect_queue, rx_effect_processor) = EffectQueue::new();
+    let (effect_queue, rx_effect_processor) =
+        EffectQueue::new(app_settings.led_controller.crossfade_ms);
     let effect_registry = effects::build_registry();
 
-    let lume_state = state::lume_app_data();
+    let lume_state = web::Data::new(std::sync::Mutex::new(state::LumeState::default()));
     let command_dispatcher = CommandDispatcher::new();
 
     controller::effect_processor::spawn(led, rx_effect_processor);
@@ -41,7 +42,7 @@ async fn main() -> std::io::Result<()> {
 
     println!("Server running at http://{}:{}", ip_address, port);
 
-    let effects_config = app_settings.effects.clone();
+    let effects_config = EffectsConfig::from_dir(&app_settings.config_dir);
 
     HttpServer::new(move || {
         App::new()
@@ -50,6 +51,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(effects_config.clone()))
             .app_data(lume_state.clone())
             .app_data(web::Data::new(command_dispatcher.clone()))
+            .configure(endpoints::device::config)
             .configure(endpoints::effects::config)
             .configure(endpoints::legacy::config)
             .configure(endpoints::google::config)

@@ -4,6 +4,7 @@ pixel_count = 100
 spi_path = "/dev/spidev0.0"
 freq_hz = 1000000
 latch_time_micros = 500
+crossfade_ms = 300
 
 [server]
 ip_address = "127.0.0.1"

@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, Debug, Default, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub struct Rgb {
     pub r: u8,
     pub g: u8,
@@ -10,6 +10,26 @@ impl Rgb {
 
     pub fn new(r: u8, g: u8, b: u8) -> Self {
         Self { r, g, b }
+    }
+
+    /// Create a fully-saturated, full-brightness color from a hue angle (0–360°).
+    pub fn from_hue(hue: f32) -> Self {
+        let hue = hue.rem_euclid(360.0);
+        let h = hue / 60.0;
+        let f = h - h.floor();
+        let (r, g, b): (f32, f32, f32) = match h.floor() as u32 {
+            0 => (1.0, f, 0.0),
+            1 => (1.0 - f, 1.0, 0.0),
+            2 => (0.0, 1.0, f),
+            3 => (0.0, 1.0 - f, 1.0),
+            4 => (f, 0.0, 1.0),
+            _ => (1.0, 0.0, 1.0 - f),
+        };
+        Rgb {
+            r: (r * 255.0) as u8,
+            g: (g * 255.0) as u8,
+            b: (b * 255.0) as u8,
+        }
     }
 
     pub fn lerp(&self, other: Rgb, t: f32) -> Self {
@@ -33,15 +53,32 @@ impl Rgb {
         })
     }
 
-    fn distance(&self, other: Rgb) -> u8 {
+    pub fn distance(&self, other: Rgb) -> u8 {
         let dr = (self.r as i16 - other.r as i16).abs();
         let dg = (self.g as i16 - other.g as i16).abs();
         let db = (self.b as i16 - other.b as i16).abs();
         dr.max(dg).max(db) as u8
     }
 
+    pub fn dim(self, scale: f32) -> Self {
+        let scale = scale.clamp(0.0, 1.0);
+        Rgb {
+            r: (self.r as f32 * scale) as u8,
+            g: (self.g as f32 * scale) as u8,
+            b: (self.b as f32 * scale) as u8,
+        }
+    }
+
+    pub fn add(self, other: Rgb) -> Self {
+        Rgb {
+            r: self.r.saturating_add(other.r),
+            g: self.g.saturating_add(other.g),
+            b: self.b.saturating_add(other.b),
+        }
+    }
+
     pub fn with_brightness(&self, brightness: u8) -> Self {
-        let scale = brightness as f32 / 100.0;
+        let scale = brightness as f32 / 255.0;
         Rgb {
             r: (self.r as f32 * scale) as u8,
             g: (self.g as f32 * scale) as u8,

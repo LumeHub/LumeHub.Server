@@ -1,0 +1,10 @@
+[[layers]]
+effect = "script"
+speed  = 1.0
+code   = "from_hue(pixel.to_float() / len.to_float() * 360.0 + (time * speed * 0.2) % 360.0)"
+
+[[layers]]
+effect = "script"
+mode   = "add"
+speed  = 1.0
+code   = "from_hue(pixel.to_float() / len.to_float() * 360.0 + (time * speed * 2.7) % 360.0)"

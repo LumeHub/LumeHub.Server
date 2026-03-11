@@ -1,0 +1,10 @@
+# A scanner dot that cycles through spectrum colors, with a soft Gaussian glow.
+[[layers]]
+effect = "script"
+speed  = 0.4
+width  = 5.0
+code   = """
+let sf  = scanner_factor(pixel, len, time, speed, width);
+let hue = fract(t + time * 0.004) * 360.0;
+dim(from_hue(hue), sf * sf)
+"""

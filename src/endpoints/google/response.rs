@@ -1,7 +1,24 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-use crate::endpoints::google::commands::color_absolute::ColorState;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ColorState {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub temperature_k: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "spectrumRGB")]
+    pub spectrum_rgb: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub spectrum_hsv: Option<ColorStateHsv>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ColorStateHsv {
+    pub hue: f32,
+    pub saturation: f32,
+    pub value: f32,
+}
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -95,7 +112,7 @@ pub struct CommandResponse {
     pub error_code: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DeviceStates {
     #[serde(skip_serializing_if = "Option::is_none")]

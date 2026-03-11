@@ -23,10 +23,10 @@ macro_rules! impl_pixel_access_for_controller {
 }
 
 pub trait Controller: Send + AsRef<[Rgb]> + AsMut<[Rgb]> {
-    fn as_pixel_slice(&self) -> &[Rgb] {
+    fn pixels(&self) -> &[Rgb] {
         self.as_ref()
     }
-    fn as_pixel_slice_mut(&mut self) -> &mut [Rgb] {
+    fn pixels_mut(&mut self) -> &mut [Rgb] {
         self.as_mut()
     }
     fn show(&mut self);

@@ -1,9 +1,8 @@
-use std::collections::HashMap;
+use std::path::PathBuf;
 
 use clap::Parser;
 use config::{Config, ConfigError, Environment, File};
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 #[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 #[serde(rename_all = "lowercase")]
@@ -19,18 +18,7 @@ pub struct LedControllerConfig {
     pub spi_path: Option<String>,
     pub freq_hz: Option<u32>,
     pub latch_time_micros: Option<u64>,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct EffectPreset {
-    pub effect: String,
-    pub params: Value,
-}
-
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
-pub struct EffectsConfig {
-    #[serde(default)]
-    pub presets: HashMap<String, EffectPreset>,
+    pub crossfade_ms: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -43,8 +31,8 @@ pub struct ServerConfig {
 pub struct Settings {
     pub led_controller: LedControllerConfig,
     pub server: ServerConfig,
-    #[serde(default)]
-    pub effects: EffectsConfig,
+    #[serde(skip)]
+    pub config_dir: PathBuf,
 }
 
 #[derive(Parser)]
@@ -52,6 +40,9 @@ pub struct Settings {
 struct Args {
     #[arg(short, long, env = "LUMEHUB_CONFIG")]
     config: Option<String>,
+
+    #[arg(long, env = "LUMEHUB_CONFIG_DIR", default_value = "config")]
+    config_dir: String,
 }
 
 impl Settings {
@@ -70,6 +61,8 @@ impl Settings {
             .add_source(Environment::with_prefix("LUMEHUB"))
             .build()?;
 
-        s.try_deserialize()
+        let mut settings: Self = s.try_deserialize()?;
+        settings.config_dir = PathBuf::from(args.config_dir);
+        Ok(settings)
     }
 }

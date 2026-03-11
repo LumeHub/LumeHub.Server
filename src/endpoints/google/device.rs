@@ -1,8 +1,5 @@
-use super::response::{Device, DeviceInfo, Name};
-use crate::{
-    endpoints::google::{commands::color_absolute::ColorState, response::DeviceStates},
-    state::LumeState,
-};
+use super::response::{ColorState, Device, DeviceInfo, DeviceStates, Name};
+use crate::state::LumeState;
 
 const DEVICE_ID: &str = "led-strip";
 
@@ -52,11 +49,19 @@ impl GoogleDevice for LedStrip {
     }
 }
 
+pub fn google_to_internal_brightness(pct: u8) -> u8 {
+    (pct as f32 * 255.0 / 100.0).round() as u8
+}
+
+pub fn internal_to_google_brightness(val: u8) -> u8 {
+    (val as f32 * 100.0 / 255.0).round() as u8
+}
+
 pub fn device_states_from_lume_state(state: &LumeState) -> DeviceStates {
     DeviceStates {
         on: Some(state.is_on),
         online: Some(true),
-        brightness: Some(state.brightness),
+        brightness: Some(internal_to_google_brightness(state.brightness)),
         color: Some(ColorState {
             spectrum_rgb: Some(state.active_color.to_spectrum()),
             spectrum_hsv: None,

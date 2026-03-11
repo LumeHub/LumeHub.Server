@@ -16,13 +16,12 @@ impl Console {
 
 impl Controller for Console {
     fn show(&mut self) {
-        // print the pixels
         self.as_ref().iter().for_each(|color| {
             print!("\x1b[48;2;{};{};{}m \x1b[0m", color.r, color.g, color.b);
         });
-        println!(); // next line
-        print!("\x1b[0m"); // reset color
-        io::stdout().flush().unwrap(); // force terminal to display;
+        println!();
+        print!("\x1b[0m");
+        io::stdout().flush().unwrap();
     }
 }
 

@@ -1,0 +1,8 @@
+[[layers]]
+effect         = "script"
+speed          = 0.03
+min_brightness = 0.0
+code           = """
+let b = min_brightness + (1.0 - min_brightness) * (0.5 + 0.5 * sin(time * speed));
+rgb_f(pr * b, pg * b, pb * b)
+"""

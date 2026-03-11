@@ -1,0 +1,5 @@
+[[layers]]
+effect = "script"
+speed  = 0.4
+width  = 8.0
+code   = "dim(rgb_f(pr, pg, pb), scanner_factor(pixel, len, time, speed, width))"

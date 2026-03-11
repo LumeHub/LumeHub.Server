@@ -1,0 +1,17 @@
+[[layers]]
+effect = "script"
+speed  = 1.0
+code   = """
+let p = pixel.to_float() / len.to_float();
+let a = sin(p * 11.3  + time * speed * 0.040);
+let b = sin(p * 17.7  - time * speed * 0.031 + 2.0);
+let c = sin(p *  7.9  + time * speed * 0.051 + 4.0);
+let base = (a + b + c) / 3.0 * 0.8 + 0.5;
+
+let x  = p * 6.0 + time * speed * 0.013;
+let ix = floor(x).to_int();
+let fx = x - floor(x);
+let n  = mix(hash(ix * 23 + 7), hash((ix + 1) * 23 + 7), fx * fx * (3.0 - 2.0 * fx));
+
+heat_color(clamp(base * 0.78 + n * 0.22, 0.0, 0.72))
+"""
