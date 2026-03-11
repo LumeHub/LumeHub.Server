@@ -60,6 +60,23 @@ impl Rgb {
         dr.max(dg).max(db) as u8
     }
 
+    pub fn dim(self, scale: f32) -> Self {
+        let scale = scale.clamp(0.0, 1.0);
+        Rgb {
+            r: (self.r as f32 * scale) as u8,
+            g: (self.g as f32 * scale) as u8,
+            b: (self.b as f32 * scale) as u8,
+        }
+    }
+
+    pub fn add(self, other: Rgb) -> Self {
+        Rgb {
+            r: self.r.saturating_add(other.r),
+            g: self.g.saturating_add(other.g),
+            b: self.b.saturating_add(other.b),
+        }
+    }
+
     pub fn with_brightness(&self, brightness: u8) -> Self {
         let scale = brightness as f32 / 255.0;
         Rgb {

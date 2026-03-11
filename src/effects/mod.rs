@@ -1,6 +1,7 @@
 use crate::color::Rgb;
 
 pub mod builder;
+pub mod builtins;
 pub mod color_loop;
 pub mod composite;
 pub mod config;

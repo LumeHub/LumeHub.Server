@@ -1,6 +1,9 @@
 use crate::controller::Controller;
 use crate::effects;
-use std::{thread, time::Duration};
+use std::thread;
+use std::time::{Duration, Instant};
+
+const FRAME_DURATION: Duration = Duration::from_millis(16); // ~60fps ceiling
 
 pub fn spawn(
     mut led: Box<dyn Controller>,
@@ -13,6 +16,8 @@ pub fn spawn(
         > = None;
 
         loop {
+            let frame_start = Instant::now();
+
             if let Ok(new_effect) = rx.try_recv() {
                 current_effect = Some(new_effect);
                 current_frame_iterator = None;
@@ -42,7 +47,10 @@ pub fn spawn(
                 }
             }
 
-            thread::sleep(Duration::from_millis(10));
+            let elapsed = frame_start.elapsed();
+            if elapsed < FRAME_DURATION {
+                thread::sleep(FRAME_DURATION - elapsed);
+            }
         }
     });
 }
