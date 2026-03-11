@@ -28,7 +28,8 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
-    let (effect_queue, rx_effect_processor) = EffectQueue::new(app_settings.led_controller.crossfade_ms);
+    let (effect_queue, rx_effect_processor) =
+        EffectQueue::new(app_settings.led_controller.crossfade_ms);
     let effect_registry = effects::build_registry();
 
     let lume_state = web::Data::new(std::sync::Mutex::new(state::LumeState::default()));

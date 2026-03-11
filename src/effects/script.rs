@@ -75,7 +75,10 @@ impl LayerEffect for Script {
         for i in 0..len {
             scope.push("pixel", i as i64);
             scope.push("t", i as f64 / (len as f64 - 1.0).max(1.0));
-            let color = match self.engine.eval_ast_with_scope::<rhai::Dynamic>(&mut scope, &self.ast) {
+            let color = match self
+                .engine
+                .eval_ast_with_scope::<rhai::Dynamic>(&mut scope, &self.ast)
+            {
                 Ok(val) => parse_color(val),
                 Err(_) => Rgb::BLACK,
             };

@@ -36,7 +36,10 @@ impl SignalScript {
         scope.push("time", frame as f64);
         scope.push("frame", frame as i64);
         scope.push("pi", std::f64::consts::PI);
-        let color = match self.engine.eval_ast_with_scope::<rhai::Dynamic>(&mut scope, &self.ast) {
+        let color = match self
+            .engine
+            .eval_ast_with_scope::<rhai::Dynamic>(&mut scope, &self.ast)
+        {
             Ok(val) => parse_color(val),
             Err(_) => Rgb::BLACK,
         };
