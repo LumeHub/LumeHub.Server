@@ -34,7 +34,8 @@ async fn main() -> std::io::Result<()> {
     let lume_state = web::Data::new(std::sync::Mutex::new(state::LumeState::default()));
     let command_dispatcher = CommandDispatcher::new();
 
-    controller::effect_processor::spawn(led, rx_effect_processor);
+    let crossfade_frames = app_settings.led_controller.crossfade_ms as usize / 16;
+    engine::spawn(Box::new(led), rx_effect_processor, crossfade_frames);
 
     let ip_address = app_settings.server.ip_address;
     let port = app_settings.server.port;

@@ -1,5 +1,4 @@
 pub mod drivers;
-pub mod effect_processor;
 
 use crate::settings::{ControllerType, LedControllerConfig};
 use domain::Rgb;
@@ -41,6 +40,18 @@ impl AsRef<[Rgb]> for Box<dyn Controller> {
 impl AsMut<[Rgb]> for Box<dyn Controller> {
     fn as_mut(&mut self) -> &mut [Rgb] {
         (**self).as_mut()
+    }
+}
+
+impl engine::Output for Box<dyn Controller> {
+    fn pixels(&self) -> &[Rgb] {
+        self.as_ref()
+    }
+    fn pixels_mut(&mut self) -> &mut [Rgb] {
+        self.as_mut()
+    }
+    fn show(&mut self) {
+        (**self).show()
     }
 }
 

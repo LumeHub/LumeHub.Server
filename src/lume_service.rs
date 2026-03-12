@@ -2,12 +2,12 @@ use actix_web::web;
 use chrono::Utc;
 use std::sync::Mutex;
 
+use engine::RenderCommand;
+
 use crate::effects::EffectQueue;
 use crate::effects::color_loop::ColorLoop;
 use crate::effects::composite::live_param::PRIMARY_COLOR;
-use crate::effects::halt::Halt;
 use crate::effects::sleep::Sleep;
-use crate::effects::solid_color::SolidColor;
 use crate::effects::wake::Wake;
 use crate::state::LumeState;
 use domain::Rgb;
@@ -38,10 +38,7 @@ impl<'a> LumeService<'a> {
         }
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
-        let color = if on { state.active_color } else { Rgb::BLACK };
-        self.effect_queue.enqueue(Box::new(SolidColor {
-            color: color.with_brightness(state.brightness),
-        }));
+        self.effect_queue.send(RenderCommand::SetOnOff(on));
     }
 
     pub fn set_brightness(&mut self, brightness: u8) {
@@ -53,9 +50,8 @@ impl<'a> LumeService<'a> {
         }
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
-        self.effect_queue.enqueue(Box::new(SolidColor {
-            color: state.active_color.with_brightness(brightness),
-        }));
+        self.effect_queue
+            .send(RenderCommand::SetBrightness(brightness));
     }
 
     pub fn set_color(&mut self, color: Rgb) {
@@ -67,9 +63,7 @@ impl<'a> LumeService<'a> {
         state.active_param_bus = None;
         state.signal_scripts.remove(PRIMARY_COLOR);
         state.signal_colors.remove(PRIMARY_COLOR);
-        self.effect_queue.enqueue(Box::new(SolidColor {
-            color: color.with_brightness(state.brightness),
-        }));
+        self.effect_queue.send(RenderCommand::SetColor(color));
     }
 
     pub fn start_color_loop(&mut self, duration: u64) {
@@ -130,7 +124,7 @@ impl<'a> LumeService<'a> {
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
         state.active_param_bus = None;
-        self.effect_queue.enqueue(Box::new(Halt));
+        self.effect_queue.send(RenderCommand::Halt);
     }
 
     pub fn stop_light_effect(&mut self) {
@@ -138,11 +132,6 @@ impl<'a> LumeService<'a> {
         state.active_light_effect = None;
         state.light_effect_end_unix_timestamp_sec = None;
         state.active_param_bus = None;
-        let color = if state.is_on {
-            state.active_color.with_brightness(state.brightness)
-        } else {
-            Rgb::BLACK
-        };
-        self.effect_queue.enqueue(Box::new(SolidColor { color }));
+        self.effect_queue.send(RenderCommand::SetOnOff(state.is_on));
     }
 }

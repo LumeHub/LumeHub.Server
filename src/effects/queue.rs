@@ -1,15 +1,17 @@
 use std::sync::mpsc;
 
-use super::{Effect, fade_in::FadeIn};
+use engine::RenderCommand;
+
+use super::Effect;
 
 #[derive(Clone)]
 pub struct EffectQueue {
-    sender: mpsc::Sender<Box<dyn Effect + Send>>,
+    sender: mpsc::Sender<RenderCommand>,
     crossfade_frames: usize,
 }
 
 impl EffectQueue {
-    pub fn new(crossfade_ms: u32) -> (Self, mpsc::Receiver<Box<dyn Effect + Send>>) {
+    pub fn new(crossfade_ms: u32) -> (Self, mpsc::Receiver<RenderCommand>) {
         let (sender, receiver) = mpsc::channel();
         let crossfade_frames = crossfade_ms as usize / 16;
         (
@@ -26,14 +28,10 @@ impl EffectQueue {
     }
 
     pub fn enqueue(&self, effect: Box<dyn Effect + Send>) {
-        let wrapped: Box<dyn Effect + Send> = if self.crossfade_frames > 0 {
-            Box::new(FadeIn {
-                inner: effect,
-                frames: self.crossfade_frames,
-            })
-        } else {
-            effect
-        };
-        self.sender.send(wrapped).unwrap();
+        self.sender.send(RenderCommand::Execute(effect)).unwrap();
+    }
+
+    pub fn send(&self, cmd: RenderCommand) {
+        self.sender.send(cmd).unwrap();
     }
 }

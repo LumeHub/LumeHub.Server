@@ -5,3 +5,13 @@ pub struct DeviceState {
     pub brightness: u8,
     pub color: Rgb,
 }
+
+impl Default for DeviceState {
+    fn default() -> Self {
+        Self {
+            on: true,
+            brightness: 255,
+            color: Rgb::BLACK,
+        }
+    }
+}

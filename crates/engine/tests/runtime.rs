@@ -54,7 +54,7 @@ fn wait_for(shown: &Arc<Mutex<Vec<Vec<Rgb>>>>, count: usize) -> Vec<Vec<Rgb>> {
 fn set_color_renders_solid_frame() {
     let (mock, shown) = MockOutput::new(4);
     let (tx, rx) = mpsc::channel();
-    engine::spawn(Box::new(mock), rx);
+    engine::spawn(Box::new(mock), rx, 0);
 
     tx.send(RenderCommand::SetColor(Rgb::new(255, 0, 0)))
         .unwrap();
@@ -72,7 +72,7 @@ fn set_color_renders_solid_frame() {
 fn set_on_false_renders_black() {
     let (mock, shown) = MockOutput::new(4);
     let (tx, rx) = mpsc::channel();
-    engine::spawn(Box::new(mock), rx);
+    engine::spawn(Box::new(mock), rx, 0);
 
     tx.send(RenderCommand::SetColor(Rgb::new(0, 255, 0)))
         .unwrap();
@@ -110,7 +110,7 @@ fn execute_renders_effect_frames() {
 
     let (mock, shown) = MockOutput::new(4);
     let (tx, rx) = mpsc::channel();
-    engine::spawn(Box::new(mock), rx);
+    engine::spawn(Box::new(mock), rx, 0);
 
     tx.send(RenderCommand::Execute(Box::new(ThreeFrames)))
         .unwrap();
