@@ -3,11 +3,11 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::effects::composite::{CompositeEffect, CompositeLayer, CompositeMode};
+use crate::effects::composite::{CompositeEffect, CompositeLayer};
 use crate::effects::composite::{PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
 use crate::effects::config::{EffectPreset, LayerPreset, SignalDef};
 use crate::effects::registry::EffectRegistry;
-use domain::Rgb;
+use domain::{BlendMode, Rgb};
 
 pub fn build_prelude(functions: &HashMap<String, String>) -> String {
     functions.values().cloned().collect::<Vec<_>>().join("\n")
@@ -66,7 +66,7 @@ fn build_layers(
             let mut sub_layers =
                 build_layers(registry, &overridden, bus, prelude, all_presets, depth + 1)?;
             if let Some(ref mode_str) = layer.mode {
-                let mode = CompositeMode::from_str(mode_str);
+                let mode = BlendMode::from(mode_str.as_str());
                 for sl in &mut sub_layers {
                     sl.mode = mode.clone();
                 }
@@ -87,8 +87,8 @@ fn build_layers(
                 mode: layer
                     .mode
                     .as_deref()
-                    .map(CompositeMode::from_str)
-                    .unwrap_or(CompositeMode::Override),
+                    .map(BlendMode::from)
+                    .unwrap_or(BlendMode::Override),
                 opacity_gradient: layer.opacity_gradient,
             });
         }

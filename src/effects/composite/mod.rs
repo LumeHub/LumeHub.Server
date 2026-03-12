@@ -8,22 +8,7 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::effects::Effect;
-use domain::Rgb;
-
-#[derive(Clone)]
-pub enum CompositeMode {
-    Override,
-    Add,
-}
-
-impl CompositeMode {
-    pub fn from_str(s: &str) -> Self {
-        match s {
-            "add" => CompositeMode::Add,
-            _ => CompositeMode::Override,
-        }
-    }
-}
+use domain::{BlendMode, Rgb};
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]
 pub struct OpacityGradient {
@@ -37,7 +22,7 @@ pub trait LayerEffect: Send + Sync + 'static {
 
 pub struct CompositeLayer {
     pub effect: Arc<dyn LayerEffect>,
-    pub mode: CompositeMode,
+    pub mode: BlendMode,
     pub opacity_gradient: Option<OpacityGradient>,
 }
 
@@ -49,7 +34,7 @@ pub struct CompositeEffect {
 impl Effect for CompositeEffect {
     fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static> {
         let len = pixels.len();
-        let layers: Vec<(Arc<dyn LayerEffect>, CompositeMode, Option<OpacityGradient>)> = self
+        let layers: Vec<(Arc<dyn LayerEffect>, BlendMode, Option<OpacityGradient>)> = self
             .layers
             .iter()
             .map(|l| (Arc::clone(&l.effect), l.mode.clone(), l.opacity_gradient))
@@ -70,8 +55,8 @@ impl Effect for CompositeEffect {
                             .map(|(i, (b, o))| {
                                 let opacity = gradient.map_or(1.0, |g| pixel_opacity(g, i));
                                 match mode {
-                                    CompositeMode::Override => b.lerp(o, opacity),
-                                    CompositeMode::Add => Rgb {
+                                    BlendMode::Override => b.lerp(o, opacity),
+                                    BlendMode::Add => Rgb {
                                         r: b.r.saturating_add((o.r as f32 * opacity) as u8),
                                         g: b.g.saturating_add((o.g as f32 * opacity) as u8),
                                         b: b.b.saturating_add((o.b as f32 * opacity) as u8),
