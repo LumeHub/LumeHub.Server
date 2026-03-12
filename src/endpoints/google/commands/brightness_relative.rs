@@ -3,7 +3,7 @@ use serde::Deserialize;
 use crate::endpoints::google::device::{
     google_to_internal_brightness, internal_to_google_brightness,
 };
-use crate::lume_service::LumeService;
+use application::SceneRuntime;
 
 use super::super::request::ExecuteCommandType;
 use super::GoogleCommandWithParams;
@@ -24,10 +24,8 @@ impl GoogleCommandWithParams for BrightnessRelativeCommand {
         ExecuteCommandType::BrightnessRelative
     }
 
-    fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        let current_percent =
-            internal_to_google_brightness(lume_service.lume_state.lock().unwrap().brightness)
-                as i16;
+    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
+        let current_percent = internal_to_google_brightness(runtime.snapshot().brightness) as i16;
         let new_percent = if let Some(percent) = params.brightness_relative_percent {
             current_percent + percent as i16
         } else if let Some(weight) = params.brightness_relative_weight {
@@ -36,7 +34,7 @@ impl GoogleCommandWithParams for BrightnessRelativeCommand {
             current_percent
         };
 
-        lume_service.set_brightness(google_to_internal_brightness(
+        runtime.set_brightness(google_to_internal_brightness(
             new_percent.clamp(0, 100) as u8
         ));
         Ok(())

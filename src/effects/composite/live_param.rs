@@ -3,6 +3,7 @@ use std::sync::{Arc, RwLock};
 
 use super::signal_script::SignalScript;
 
+use application::BusProxy;
 use domain::Rgb;
 
 pub const PRIMARY_COLOR: &str = "primary_color";
@@ -179,5 +180,26 @@ impl ParameterBus {
             script.tick();
         }
         self.colors.read().unwrap().values().for_each(|p| p.tick());
+    }
+}
+
+impl BusProxy for ParameterBus {
+    fn set_color(&self, name: &str, color: Rgb) {
+        ParameterBus::set_color(self, name, color);
+    }
+
+    fn set_brightness(&self, value: f32) {
+        self.brightness.set(value);
+    }
+
+    fn set_animated(&self, name: &str, code: &str) -> Result<(), String> {
+        ParameterBus::set_animated(self, name, code)
+    }
+
+    fn all_colors(&self) -> HashMap<String, Rgb> {
+        ParameterBus::all_colors(self)
+            .into_iter()
+            .map(|(name, param)| (name, param.get()))
+            .collect()
     }
 }

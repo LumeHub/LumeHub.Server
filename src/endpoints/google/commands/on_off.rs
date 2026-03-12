@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::lume_service::LumeService;
+use application::SceneRuntime;
 
 use super::super::request::ExecuteCommandType;
 use super::GoogleCommandWithParams;
@@ -20,8 +20,8 @@ impl GoogleCommandWithParams for OnOffCommand {
         ExecuteCommandType::OnOff
     }
 
-    fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        lume_service.set_on_off(params.on);
+    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
+        runtime.set_on_off(params.on);
         Ok(())
     }
 }

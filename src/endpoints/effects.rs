@@ -1,16 +1,14 @@
 use std::collections::HashMap;
-use std::sync::Mutex;
+use std::sync::Arc;
 
 use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
 use serde::{Deserialize, Serialize};
 
 use crate::effects::EffectQueue;
 use crate::effects::builder::{build_composite, build_prelude};
-use crate::effects::composite::PRIMARY_COLOR;
 use crate::effects::config::{EffectPreset, EffectsConfig};
 use crate::effects::registry::EffectRegistry;
-use crate::lume_service::LumeService;
-use crate::state::LumeState;
+use application::{BusProxy, SceneRuntime, SignalValue};
 use domain::Rgb;
 
 #[derive(Serialize)]
@@ -22,7 +20,7 @@ struct PresetsResponse<'a> {
 pub async fn execute_preset(
     effect_queue: web::Data<EffectQueue>,
     registry: web::Data<EffectRegistry>,
-    lume_state: web::Data<Mutex<LumeState>>,
+    runtime: web::Data<dyn SceneRuntime>,
     effects: web::Data<EffectsConfig>,
     path: web::Path<String>,
 ) -> impl Responder {
@@ -32,16 +30,12 @@ pub async fn execute_preset(
         None => return HttpResponse::NotFound().body("unknown preset"),
     };
 
-    let (initial_color, signal_colors, signal_scripts, initial_brightness, is_on) = {
-        let state = lume_state.lock().unwrap();
-        (
-            state.active_color,
-            state.signal_colors.clone(),
-            state.signal_scripts.clone(),
-            state.brightness,
-            state.is_on,
-        )
-    };
+    let snap = runtime.snapshot();
+    let overrides = runtime.signal_overrides();
+    let initial_color = snap.color;
+    let initial_brightness = if snap.on { snap.brightness } else { 0 };
+    let signal_colors = overrides.colors;
+    let signal_scripts = overrides.scripts;
 
     let prelude = build_prelude(&effects.functions);
     let (composite, bus) = match build_composite(
@@ -49,7 +43,7 @@ pub async fn execute_preset(
         &preset,
         initial_color,
         &signal_colors,
-        if is_on { initial_brightness } else { 0 },
+        initial_brightness,
         effect_queue.brightness_speed(),
         prelude,
         &effects.presets,
@@ -67,10 +61,7 @@ pub async fn execute_preset(
         bus.set_color(name, color);
     }
 
-    let mut state = lume_state.lock().unwrap();
-    state.active_light_effect = Some(preset_name);
-    state.light_effect_end_unix_timestamp_sec = None;
-    state.active_param_bus = Some(bus);
+    runtime.attach_bus(Arc::clone(&bus) as Arc<dyn BusProxy>, preset_name);
     effect_queue.enqueue(Box::new(composite));
     HttpResponse::Ok().finish()
 }
@@ -83,26 +74,14 @@ pub async fn list_presets(effects: web::Data<EffectsConfig>) -> impl Responder {
 }
 
 #[delete("/effects/active")]
-pub async fn delete_active(
-    lume_state: web::Data<Mutex<LumeState>>,
-    effect_queue: web::Data<EffectQueue>,
-) -> impl Responder {
-    LumeService::new(&lume_state, &effect_queue).halt_effect();
+pub async fn delete_active(runtime: web::Data<dyn SceneRuntime>) -> impl Responder {
+    runtime.halt();
     HttpResponse::NoContent().finish()
 }
 
 #[get("/effects/signals")]
-pub async fn get_signals(lume_state: web::Data<Mutex<LumeState>>) -> impl Responder {
-    let state = lume_state.lock().unwrap();
-    let signals: HashMap<String, Rgb> = if let Some(bus) = &state.active_param_bus {
-        bus.all_colors()
-            .into_iter()
-            .map(|(name, param)| (name, param.get()))
-            .collect()
-    } else {
-        HashMap::new()
-    };
-    HttpResponse::Ok().json(signals)
+pub async fn get_signals(runtime: web::Data<dyn SceneRuntime>) -> impl Responder {
+    HttpResponse::Ok().json(runtime.bus_colors())
 }
 
 #[derive(Deserialize)]
@@ -114,7 +93,7 @@ enum SetSignalRequest {
 
 #[put("/effects/signals/{name}")]
 pub async fn set_signal(
-    lume_state: web::Data<Mutex<LumeState>>,
+    runtime: web::Data<dyn SceneRuntime>,
     path: web::Path<String>,
     body: web::Bytes,
 ) -> impl Responder {
@@ -123,32 +102,20 @@ pub async fn set_signal(
         Err(e) => return HttpResponse::BadRequest().body(e.to_string()),
     };
     let signal_name = path.into_inner();
-    let mut state = lume_state.lock().unwrap();
 
-    match req {
+    let result = match req {
         SetSignalRequest::Color { r, g, b } => {
-            let color = Rgb { r, g, b };
-            state.signal_scripts.remove(&signal_name);
-            if signal_name == PRIMARY_COLOR {
-                state.active_color = color;
-            } else {
-                state.signal_colors.insert(signal_name.clone(), color);
-            }
-            if let Some(bus) = &state.active_param_bus {
-                bus.set_color(&signal_name, color);
-            }
+            runtime.set_signal(&signal_name, SignalValue::Color(Rgb { r, g, b }))
         }
         SetSignalRequest::Script { code } => {
-            if let Some(bus) = &state.active_param_bus
-                && let Err(e) = bus.set_animated(&signal_name, &code)
-            {
-                return HttpResponse::BadRequest().body(format!("script error: {}", e));
-            }
-            state.signal_scripts.insert(signal_name, code);
+            runtime.set_signal(&signal_name, SignalValue::Script(code))
         }
-    }
+    };
 
-    HttpResponse::Ok().finish()
+    match result {
+        Ok(()) => HttpResponse::Ok().finish(),
+        Err(e) => HttpResponse::BadRequest().body(format!("script error: {}", e)),
+    }
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {

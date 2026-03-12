@@ -1,12 +1,7 @@
-use std::sync::Mutex;
-
 use actix_web::{HttpResponse, Responder, get, patch, web};
-use serde::{Deserialize, Serialize};
-
-use crate::effects::EffectQueue;
-use crate::lume_service::LumeService;
-use crate::state::LumeState;
+use application::{SceneRuntime, SceneSnapshot};
 use domain::Rgb;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 struct DeviceStateResponse {
@@ -16,15 +11,20 @@ struct DeviceStateResponse {
     active_effect: Option<String>,
 }
 
+impl From<SceneSnapshot> for DeviceStateResponse {
+    fn from(s: SceneSnapshot) -> Self {
+        Self {
+            on: s.on,
+            brightness: s.brightness,
+            color: s.color,
+            active_effect: s.active_effect,
+        }
+    }
+}
+
 #[get("/device/state")]
-pub async fn get_state(state: web::Data<Mutex<LumeState>>) -> impl Responder {
-    let state = state.lock().unwrap();
-    HttpResponse::Ok().json(DeviceStateResponse {
-        on: state.is_on,
-        brightness: state.brightness,
-        color: state.active_color,
-        active_effect: state.active_light_effect.clone(),
-    })
+pub async fn get_state(runtime: web::Data<dyn SceneRuntime>) -> impl Responder {
+    HttpResponse::Ok().json(DeviceStateResponse::from(runtime.snapshot()))
 }
 
 #[derive(Deserialize)]
@@ -36,27 +36,19 @@ struct PatchStateRequest {
 
 #[patch("/device/state")]
 pub async fn patch_state(
-    lume_state: web::Data<Mutex<LumeState>>,
-    effect_queue: web::Data<EffectQueue>,
+    runtime: web::Data<dyn SceneRuntime>,
     body: web::Json<PatchStateRequest>,
 ) -> impl Responder {
-    let mut service = LumeService::new(&lume_state, &effect_queue);
     if let Some(on) = body.on {
-        service.set_on_off(on);
+        runtime.set_on_off(on);
     }
     if let Some(brightness) = body.brightness {
-        service.set_brightness(brightness);
+        runtime.set_brightness(brightness);
     }
     if let Some(color) = body.color {
-        service.set_color(color);
+        runtime.set_color(color);
     }
-    let state = lume_state.lock().unwrap();
-    HttpResponse::Ok().json(DeviceStateResponse {
-        on: state.is_on,
-        brightness: state.brightness,
-        color: state.active_color,
-        active_effect: state.active_light_effect.clone(),
-    })
+    HttpResponse::Ok().json(DeviceStateResponse::from(runtime.snapshot()))
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {

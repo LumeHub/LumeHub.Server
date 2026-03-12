@@ -1,17 +1,20 @@
 mod controller;
 mod effects;
 mod endpoints;
-mod lume_service;
+mod scene_runtime;
 mod settings;
-mod state;
+
+use std::sync::Arc;
 
 use actix_web::{App, HttpServer, web};
+use application::SceneRuntime;
 use effects::EffectQueue;
 use effects::config::EffectsConfig;
 use settings::Settings;
 
 use controller::create_controller;
 use endpoints::google::commands::CommandDispatcher;
+use scene_runtime::RenderTaskRuntime;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -31,7 +34,7 @@ async fn main() -> std::io::Result<()> {
         EffectQueue::new(app_settings.led_controller.crossfade_ms);
     let effect_registry = effects::build_registry();
 
-    let lume_state = web::Data::new(std::sync::Mutex::new(state::LumeState::default()));
+    let runtime: Arc<dyn SceneRuntime> = Arc::new(RenderTaskRuntime::new(effect_queue.clone()));
     let command_dispatcher = CommandDispatcher::new();
 
     let crossfade_frames = app_settings.led_controller.crossfade_ms as usize / 16;
@@ -49,7 +52,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(effect_queue.clone()))
             .app_data(web::Data::new(effect_registry.clone()))
             .app_data(web::Data::new(effects_config.clone()))
-            .app_data(lume_state.clone())
+            .app_data(web::Data::from(Arc::clone(&runtime)))
             .app_data(web::Data::new(command_dispatcher.clone()))
             .configure(endpoints::device::config)
             .configure(endpoints::effects::config)

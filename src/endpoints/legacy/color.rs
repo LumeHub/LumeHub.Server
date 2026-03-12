@@ -1,12 +1,7 @@
-use std::sync::Mutex;
-
 use actix_web::{HttpResponse, Responder, post, web};
-use serde::{Deserialize, Serialize};
-
-use crate::effects::EffectQueue;
-use crate::lume_service::LumeService;
-use crate::state::LumeState;
+use application::SceneRuntime;
 use domain::Rgb;
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct SetColorRequest {
@@ -33,15 +28,13 @@ impl From<Rgb> for LedColorResponse {
 }
 
 #[post("/led/getColor")]
-pub async fn led_get_color(state: web::Data<Mutex<LumeState>>) -> impl Responder {
-    let state = state.lock().unwrap();
-    HttpResponse::Ok().json(LedColorResponse::from(state.active_color))
+pub async fn led_get_color(runtime: web::Data<dyn SceneRuntime>) -> impl Responder {
+    HttpResponse::Ok().json(LedColorResponse::from(runtime.snapshot().color))
 }
 
 #[post("/led/setColor")]
 pub async fn led_set_color(
-    lume_state: web::Data<Mutex<LumeState>>,
-    effect_queue: web::Data<EffectQueue>,
+    runtime: web::Data<dyn SceneRuntime>,
     body: web::Bytes,
 ) -> impl Responder {
     let req: SetColorRequest = match serde_json::from_slice(&body) {
@@ -53,7 +46,6 @@ pub async fn led_set_color(
         g: req.green,
         b: req.blue,
     };
-    LumeService::new(&lume_state, &effect_queue).set_color(color);
-    let state = lume_state.lock().unwrap();
-    HttpResponse::Ok().json(LedColorResponse::from(state.active_color))
+    runtime.set_color(color);
+    HttpResponse::Ok().json(LedColorResponse::from(runtime.snapshot().color))
 }

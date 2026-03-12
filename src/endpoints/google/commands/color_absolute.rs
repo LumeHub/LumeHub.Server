@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::lume_service::LumeService;
+use application::SceneRuntime;
 use domain::Rgb;
 use hsv::hsv_to_rgb;
 
@@ -55,9 +55,9 @@ impl GoogleCommandWithParams for ColorAbsoluteCommand {
         ExecuteCommandType::ColorAbsolute
     }
 
-    fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
+    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
         let color = parse_color(&params.color)?;
-        lume_service.set_color(color);
+        runtime.set_color(color);
         Ok(())
     }
 }

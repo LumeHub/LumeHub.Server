@@ -1,11 +1,11 @@
 use super::response::{ColorState, Device, DeviceInfo, DeviceStates, Name};
-use crate::state::LumeState;
+use application::SceneSnapshot;
 
 const DEVICE_ID: &str = "led-strip";
 
 pub trait GoogleDevice {
     fn sync(&self) -> Device;
-    fn query(&self, state: &LumeState) -> serde_json::Value;
+    fn query(&self, snap: &SceneSnapshot) -> serde_json::Value;
 }
 
 pub struct LedStrip;
@@ -44,8 +44,8 @@ impl GoogleDevice for LedStrip {
         }
     }
 
-    fn query(&self, state: &LumeState) -> serde_json::Value {
-        serde_json::to_value(device_states_from_lume_state(state)).unwrap()
+    fn query(&self, snap: &SceneSnapshot) -> serde_json::Value {
+        serde_json::to_value(device_states_from_snapshot(snap)).unwrap()
     }
 }
 
@@ -57,17 +57,17 @@ pub fn internal_to_google_brightness(val: u8) -> u8 {
     (val as f32 * 100.0 / 255.0).round() as u8
 }
 
-pub fn device_states_from_lume_state(state: &LumeState) -> DeviceStates {
+pub fn device_states_from_snapshot(snap: &SceneSnapshot) -> DeviceStates {
     DeviceStates {
-        on: Some(state.is_on),
+        on: Some(snap.on),
         online: Some(true),
-        brightness: Some(internal_to_google_brightness(state.brightness)),
+        brightness: Some(internal_to_google_brightness(snap.brightness)),
         color: Some(ColorState {
-            spectrum_rgb: Some(state.active_color.to_spectrum()),
+            spectrum_rgb: Some(snap.color.to_spectrum()),
             spectrum_hsv: None,
             temperature_k: None,
         }),
-        active_light_effect: state.active_light_effect.clone(),
-        light_effect_end_unix_timestamp_sec: state.light_effect_end_unix_timestamp_sec,
+        active_light_effect: snap.active_effect.clone(),
+        light_effect_end_unix_timestamp_sec: snap.light_effect_end_unix_timestamp_sec,
     }
 }

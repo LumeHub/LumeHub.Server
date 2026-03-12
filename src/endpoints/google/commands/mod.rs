@@ -7,26 +7,22 @@ pub mod sleep;
 pub mod stop_effect;
 pub mod wake;
 
-use crate::lume_service::LumeService;
+use application::SceneRuntime;
 use serde::de::DeserializeOwned;
 
 use super::request::{CommandRequest, ExecuteCommandType};
 use super::response::{CommandResponse, CommandStatus};
-use crate::endpoints::google::device::device_states_from_lume_state;
+use crate::endpoints::google::device::device_states_from_snapshot;
 
 pub trait GoogleCommand: Send + Sync {
     fn command_type(&self) -> ExecuteCommandType;
-    fn handle(
-        &self,
-        cmd_req: &CommandRequest,
-        lume_service: &mut LumeService,
-    ) -> Result<(), String>;
+    fn handle(&self, cmd_req: &CommandRequest, runtime: &dyn SceneRuntime) -> Result<(), String>;
 }
 
 pub trait GoogleCommandWithParams: Send + Sync {
     type Params: DeserializeOwned;
     fn command_type(&self) -> ExecuteCommandType;
-    fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String>;
+    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String>;
 }
 
 impl<T> GoogleCommand for T
@@ -37,14 +33,10 @@ where
         <Self as GoogleCommandWithParams>::command_type(self)
     }
 
-    fn handle(
-        &self,
-        cmd_req: &CommandRequest,
-        lume_service: &mut LumeService,
-    ) -> Result<(), String> {
+    fn handle(&self, cmd_req: &CommandRequest, runtime: &dyn SceneRuntime) -> Result<(), String> {
         cmd_req
             .get_params::<T::Params>()
-            .and_then(|params| self.handle(params, lume_service))
+            .and_then(|params| self.handle(params, runtime))
     }
 }
 
@@ -77,7 +69,7 @@ impl CommandDispatcher {
     pub fn process_command(
         &self,
         cmd_req: &CommandRequest,
-        lume_service: &mut LumeService,
+        runtime: &dyn SceneRuntime,
     ) -> Vec<CommandResponse> {
         let make_error_responses = |error_code: &str| {
             cmd_req
@@ -101,16 +93,14 @@ impl CommandDispatcher {
             .iter()
             .find(|cmd| cmd.command_type() == exec_req.command)
         {
-            match command_handler.handle(cmd_req, lume_service) {
+            match command_handler.handle(cmd_req, runtime) {
                 Ok(_) => cmd_req
                     .devices
                     .iter()
                     .map(|d| CommandResponse {
                         ids: vec![d.id.clone()],
                         status: CommandStatus::Success,
-                        states: Some(device_states_from_lume_state(
-                            &lume_service.lume_state.lock().unwrap(),
-                        )),
+                        states: Some(device_states_from_snapshot(&runtime.snapshot())),
                         error_code: None,
                     })
                     .collect(),

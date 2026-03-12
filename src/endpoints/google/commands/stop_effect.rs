@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::lume_service::LumeService;
+use application::SceneRuntime;
 
 use super::super::request::ExecuteCommandType;
 use super::GoogleCommandWithParams;
@@ -18,8 +18,8 @@ impl GoogleCommandWithParams for StopEffectCommand {
         ExecuteCommandType::StopEffect
     }
 
-    fn handle(&self, _params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        lume_service.stop_light_effect();
+    fn handle(&self, _params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
+        runtime.stop_effect();
         Ok(())
     }
 }

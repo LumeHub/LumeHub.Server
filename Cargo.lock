@@ -289,6 +289,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "application"
+version = "0.1.0"
+dependencies = [
+ "domain",
+]
+
+[[package]]
 name = "arraydeque"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1124,6 +1131,7 @@ name = "lumehub-server"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "application",
  "chrono",
  "clap",
  "config",

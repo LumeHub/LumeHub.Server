@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use crate::lume_service::LumeService;
+use application::SceneRuntime;
 
 use super::super::request::ExecuteCommandType;
 use super::GoogleCommandWithParams;
@@ -20,8 +20,8 @@ impl GoogleCommandWithParams for ColorLoopCommand {
         ExecuteCommandType::ColorLoop
     }
 
-    fn handle(&self, params: Self::Params, lume_service: &mut LumeService) -> Result<(), String> {
-        lume_service.start_color_loop(params.duration);
+    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
+        runtime.start_color_loop(params.duration);
         Ok(())
     }
 }
