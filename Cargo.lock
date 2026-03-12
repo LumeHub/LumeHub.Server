@@ -648,6 +648,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "engine"
+version = "0.1.0"
+dependencies = [
+ "domain",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1121,6 +1128,7 @@ dependencies = [
  "clap",
  "config",
  "domain",
+ "engine",
  "hsv",
  "include_dir",
  "rhai",
