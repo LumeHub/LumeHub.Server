@@ -1,5 +1,3 @@
-use domain::Rgb;
-
 pub mod builder;
 pub mod builtins;
 pub mod color_loop;
@@ -15,11 +13,8 @@ pub mod sleep;
 pub mod solid_color;
 pub mod wake;
 
+pub use engine::Effect;
 pub use queue::EffectQueue;
-
-pub trait Effect: Send {
-    fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static>;
-}
 
 pub fn build_registry() -> registry::EffectRegistry {
     let mut registry = registry::EffectRegistry::default();
