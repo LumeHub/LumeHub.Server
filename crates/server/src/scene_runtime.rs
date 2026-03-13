@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "google")]
 use chrono::Utc;
 use engine::{EffectQueue, RenderCommand};
 
 use effects::bus::PRIMARY_COLOR;
 
-use crate::color_loop::ColorLoop;
-use crate::sleep::Sleep;
-use crate::wake::Wake;
+#[cfg(feature = "google")]
+use api_google::effects::{ColorLoop, Sleep, Wake};
 use application::{BusProxy, SceneRuntime, SceneSnapshot, SignalOverrides, SignalValue};
 use domain::Rgb;
 
@@ -111,6 +111,7 @@ impl SceneRuntime for RenderTaskRuntime {
         self.queue.send(RenderCommand::SetOnOff(on));
     }
 
+    #[cfg(feature = "google")]
     fn start_color_loop(&self, duration: u64) {
         let mut state = self.state.lock().unwrap();
         state.on = true;
@@ -133,6 +134,7 @@ impl SceneRuntime for RenderTaskRuntime {
         }));
     }
 
+    #[cfg(feature = "google")]
     fn start_sleep(&self, duration: u64) {
         let mut state = self.state.lock().unwrap();
         state.on = true;
@@ -147,6 +149,7 @@ impl SceneRuntime for RenderTaskRuntime {
         }));
     }
 
+    #[cfg(feature = "google")]
     fn start_wake(&self, duration: u64) {
         let mut state = self.state.lock().unwrap();
         state.on = true;

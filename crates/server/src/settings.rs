@@ -2,22 +2,13 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use config::{Config, ConfigError, Environment, File};
+use drivers::DriverConfig;
 use serde::{Deserialize, Serialize};
-
-#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
-#[serde(rename_all = "lowercase")]
-pub enum ControllerType {
-    Console,
-    Ws2801,
-}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct LedControllerConfig {
-    pub controller_type: ControllerType,
-    pub pixel_count: usize,
-    pub spi_path: Option<String>,
-    pub freq_hz: Option<u32>,
-    pub latch_time_micros: Option<u64>,
+    #[serde(flatten)]
+    pub driver: DriverConfig,
     pub crossfade_ms: u32,
 }
 
@@ -51,7 +42,7 @@ impl Settings {
 
         let s = Config::builder()
             .add_source(config::File::from_str(
-                include_str!("../config/default.toml"),
+                include_str!("../../../config/default.toml"),
                 config::FileFormat::Toml,
             ))
             .add_source(
