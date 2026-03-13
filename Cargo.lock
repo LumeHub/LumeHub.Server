@@ -646,6 +646,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "effects"
+version = "0.1.0"
+dependencies = [
+ "application",
+ "config",
+ "domain",
+ "engine",
+ "include_dir",
+ "rhai",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "encoding_rs"
 version = "0.8.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1136,6 +1150,7 @@ dependencies = [
  "clap",
  "config",
  "domain",
+ "effects",
  "engine",
  "hsv",
  "include_dir",

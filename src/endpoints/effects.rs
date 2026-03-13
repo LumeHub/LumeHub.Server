@@ -4,12 +4,13 @@ use std::sync::Arc;
 use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
 use serde::{Deserialize, Serialize};
 
-use crate::effects::EffectQueue;
-use crate::effects::builder::{build_composite, build_prelude};
-use crate::effects::config::{EffectPreset, EffectsConfig};
-use crate::effects::registry::EffectRegistry;
 use application::{BusProxy, SceneRuntime, SignalValue};
 use domain::Rgb;
+use effects::builder::{InitialState, build_composite, build_prelude};
+use effects::config::EffectsConfig;
+use effects::preset::EffectPreset;
+use effects::registry::EffectRegistry;
+use engine::EffectQueue;
 
 #[derive(Serialize)]
 struct PresetsResponse<'a> {
@@ -32,32 +33,27 @@ pub async fn execute_preset(
 
     let snap = runtime.snapshot();
     let overrides = runtime.signal_overrides();
-    let initial_color = snap.color;
-    let initial_brightness = if snap.on { snap.brightness } else { 0 };
-    let signal_colors = overrides.colors;
+    let state = InitialState {
+        color: snap.color,
+        brightness: if snap.on { snap.brightness } else { 0 },
+        brightness_speed: effect_queue.brightness_speed(),
+        signal_colors: overrides.colors,
+    };
     let signal_scripts = overrides.scripts;
 
     let prelude = build_prelude(&effects.functions);
-    let (composite, bus) = match build_composite(
-        &registry,
-        &preset,
-        initial_color,
-        &signal_colors,
-        initial_brightness,
-        effect_queue.brightness_speed(),
-        prelude,
-        &effects.presets,
-    ) {
-        Ok(result) => result,
-        Err(msg) => return HttpResponse::BadRequest().body(msg),
-    };
+    let (composite, bus) =
+        match build_composite(&registry, &preset, &state, prelude, &effects.presets) {
+            Ok(result) => result,
+            Err(msg) => return HttpResponse::BadRequest().body(msg),
+        };
 
     // Apply user animated overrides — these beat preset animations.
     for (name, code) in &signal_scripts {
         let _ = bus.set_animated(name, code);
     }
     // Apply user static overrides — these beat everything (incl. animations).
-    for (name, &color) in &signal_colors {
+    for (name, &color) in &state.signal_colors {
         bus.set_color(name, color);
     }
 

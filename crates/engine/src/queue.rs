@@ -1,8 +1,6 @@
 use std::sync::mpsc;
 
-use engine::RenderCommand;
-
-use super::Effect;
+use crate::{Effect, RenderCommand};
 
 #[derive(Clone)]
 pub struct EffectQueue {

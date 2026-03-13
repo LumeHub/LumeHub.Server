@@ -4,6 +4,7 @@ members = [
     "crates/domain",
     "crates/engine",
     "crates/application",
+    "crates/effects",
 ]
 resolver = "2"
 
@@ -16,6 +17,7 @@ edition = "2024"
 domain = { path = "crates/domain" }
 engine = { path = "crates/engine" }
 application = { path = "crates/application" }
+effects = { path = "crates/effects" }
 actix-web = "4.11.0"
 chrono = "0.4.42"
 clap = { version = "4.5.49", features = ["derive", "env"] }

@@ -1,15 +1,17 @@
+mod color_loop;
 mod controller;
-mod effects;
 mod endpoints;
 mod scene_runtime;
 mod settings;
+mod sleep;
+mod wake;
 
 use std::sync::Arc;
 
 use actix_web::{App, HttpServer, web};
 use application::SceneRuntime;
-use effects::EffectQueue;
 use effects::config::EffectsConfig;
+use engine::EffectQueue;
 use settings::Settings;
 
 use controller::create_controller;

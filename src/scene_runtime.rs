@@ -2,13 +2,13 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use chrono::Utc;
-use engine::RenderCommand;
+use engine::{EffectQueue, RenderCommand};
 
-use crate::effects::EffectQueue;
-use crate::effects::color_loop::ColorLoop;
-use crate::effects::composite::live_param::PRIMARY_COLOR;
-use crate::effects::sleep::Sleep;
-use crate::effects::wake::Wake;
+use effects::bus::PRIMARY_COLOR;
+
+use crate::color_loop::ColorLoop;
+use crate::sleep::Sleep;
+use crate::wake::Wake;
 use application::{BusProxy, SceneRuntime, SceneSnapshot, SignalOverrides, SignalValue};
 use domain::Rgb;
 

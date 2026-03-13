@@ -1,13 +1,48 @@
-use rhai::Engine;
+use rhai::{Dynamic, Engine};
 
 use domain::Rgb;
 
-pub fn heat_color(v: f32) -> Rgb {
+pub fn parse_color(val: Dynamic) -> Rgb {
+    if val.is::<Rgb>() {
+        return val.cast::<Rgb>();
+    }
+    if val.is_map() {
+        let map = val.cast::<rhai::Map>();
+        let get = |k: &str| map.get(k).and_then(|v| v.as_int().ok()).unwrap_or(0);
+        return Rgb {
+            r: get("r").clamp(0, 255) as u8,
+            g: get("g").clamp(0, 255) as u8,
+            b: get("b").clamp(0, 255) as u8,
+        };
+    }
+    Rgb::BLACK
+}
+
+pub fn make_script_engine() -> Engine {
+    let mut engine = Engine::new();
+    engine.set_max_operations(0);
+    register_math(&mut engine);
+    register_color(&mut engine);
+    engine.register_fn("hash", hash);
+    engine.register_fn("scanner_factor", scanner_factor);
+    engine.register_fn("fire_color", fire_color);
+    engine
+}
+
+pub fn make_signal_engine() -> Engine {
+    let mut engine = Engine::new();
+    engine.set_max_operations(1_000);
+    register_math(&mut engine);
+    register_color(&mut engine);
+    engine
+}
+
+fn heat_color(v: f32) -> Rgb {
     let v = v.clamp(0.0, 1.0);
     match v {
         h if h < 0.25 => Rgb::BLACK.lerp(Rgb::new(180, 0, 0), h * 4.0),
-        h if h < 0.5 => Rgb::new(180, 0, 0).lerp(Rgb::new(255, 80, 0), (h - 0.25) * 4.0),
-        h if h < 0.75 => Rgb::new(255, 80, 0).lerp(Rgb::new(255, 220, 0), (h - 0.5) * 4.0),
+        h if h < 0.50 => Rgb::new(180, 0, 0).lerp(Rgb::new(255, 80, 0), (h - 0.25) * 4.0),
+        h if h < 0.75 => Rgb::new(255, 80, 0).lerp(Rgb::new(255, 220, 0), (h - 0.50) * 4.0),
         h => Rgb::new(255, 220, 0).lerp(Rgb::new(255, 255, 255), (h - 0.75) * 4.0),
     }
 }
@@ -73,7 +108,6 @@ fn register_color(engine: &mut Engine) {
     engine.register_get("r", |c: &mut Rgb| c.r as i64);
     engine.register_get("g", |c: &mut Rgb| c.g as i64);
     engine.register_get("b", |c: &mut Rgb| c.b as i64);
-
     engine.register_fn("rgb", |r: i64, g: i64, b: i64| -> Rgb {
         Rgb::new(
             r.clamp(0, 255) as u8,
@@ -95,39 +129,4 @@ fn register_color(engine: &mut Engine) {
         a.lerp(b, t.clamp(0.0, 1.0) as f32)
     });
     engine.register_fn("add_colors", |a: Rgb, b: Rgb| -> Rgb { a + b });
-}
-
-pub fn make_script_engine() -> Engine {
-    let mut engine = Engine::new();
-    engine.set_max_operations(0);
-
-    register_math(&mut engine);
-    register_color(&mut engine);
-
-    engine.register_fn("hash", |seed: i64| -> f64 { hash(seed) });
-
-    engine.register_fn(
-        "scanner_factor",
-        |pixel: i64, len: i64, time: f64, speed: f64, width: f64| -> f64 {
-            scanner_factor(pixel, len, time, speed, width)
-        },
-    );
-    engine.register_fn(
-        "fire_color",
-        |pixel: i64, len: i64, frame: i64, flicker: f64, turbulence: f64, decay: f64| -> Rgb {
-            fire_color(pixel, len, frame, flicker, turbulence, decay)
-        },
-    );
-
-    engine
-}
-
-pub fn make_signal_engine() -> Engine {
-    let mut engine = Engine::new();
-    engine.set_max_operations(1_000);
-
-    register_math(&mut engine);
-    register_color(&mut engine);
-
-    engine
 }

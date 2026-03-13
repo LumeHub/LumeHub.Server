@@ -1,5 +1,5 @@
-use crate::effects::Effect;
 use domain::Rgb;
+use engine::Effect;
 
 pub struct ColorLoop {
     pub duration: u64,
@@ -22,17 +22,13 @@ impl Effect for ColorLoop {
             if frame_count >= total_frames {
                 return None;
             }
-
             let current_color_idx = (frame_count / FRAMES_PER_TRANSITION) % num_colors;
             let next_color_idx = (current_color_idx + 1) % num_colors;
             let progress =
                 (frame_count % FRAMES_PER_TRANSITION) as f32 / FRAMES_PER_TRANSITION as f32;
-
-            let interpolated_color =
-                Rgb::lerp(&colors[current_color_idx], colors[next_color_idx], progress);
-
+            let color = Rgb::lerp(&colors[current_color_idx], colors[next_color_idx], progress);
             frame_count += 1;
-            Some(vec![interpolated_color; len])
+            Some(vec![color; len])
         }))
     }
 }

@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::effects::composite::LayerEffect;
-use crate::effects::composite::ParameterBus;
+use super::bus::ParameterBus;
+use super::layer::LayerEffect;
 
 pub type LayerBuilder =
     fn(Value, Arc<ParameterBus>, &str) -> Result<Arc<dyn LayerEffect>, EffectBuildError>;
