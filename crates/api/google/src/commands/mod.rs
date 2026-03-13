@@ -50,6 +50,12 @@ impl Clone for CommandDispatcher {
     }
 }
 
+impl Default for CommandDispatcher {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CommandDispatcher {
     pub fn new() -> Self {
         CommandDispatcher {
