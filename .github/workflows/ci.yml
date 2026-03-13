@@ -17,11 +17,13 @@ jobs:
 
       - uses: cachix/install-nix-action@v31
         with:
-          nix_path: nixpkgs=channel:nixos-unstable
+          github_access_token: ${{ secrets.GH_ACCESS_TOKEN }}
+          extra_nix_config: |
+            experimental-features = nix-command flakes pipe-operators
 
       - uses: cachix/cachix-action@v16
         with:
           name: anders130
           authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
 
-      - run: nix flake check
+      - run: nix flake check --accept-flake-config
