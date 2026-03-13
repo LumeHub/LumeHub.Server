@@ -1,4 +1,5 @@
 use effects::config::EffectsConfig;
+use effects::validate_scripts;
 use std::path::PathBuf;
 
 #[test]
@@ -17,6 +18,37 @@ fn known_stock_preset_is_present() {
     assert!(
         config.presets.contains_key("rainbow"),
         "rainbow preset should be present"
+    );
+}
+
+#[test]
+fn validate_scripts_passes_for_all_stock_presets() {
+    let config = EffectsConfig::from_dir(&PathBuf::from("/nonexistent"));
+    let errors = validate_scripts(&config, "");
+    assert!(
+        errors.is_empty(),
+        "stock presets have script errors: {:?}",
+        errors
+    );
+}
+
+#[test]
+fn validate_scripts_catches_broken_rhai() {
+    let dir = tempfile::tempdir().unwrap();
+    let effects_dir = dir.path().join("effects");
+    std::fs::create_dir_all(&effects_dir).unwrap();
+    std::fs::write(
+        effects_dir.join("broken.rhai"),
+        "this is @@@ not valid rhai",
+    )
+    .unwrap();
+
+    let config = EffectsConfig::from_dir(dir.path());
+    let errors = validate_scripts(&config, "");
+    assert!(
+        errors.iter().any(|e| e.contains("broken")),
+        "expected an error for broken preset, got: {:?}",
+        errors
     );
 }
 

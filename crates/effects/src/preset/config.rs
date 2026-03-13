@@ -84,7 +84,13 @@ fn load_from_fs(dir: &Path) -> EffectsConfig {
             let name = path.file_stem()?.to_str()?.to_string();
             let content = std::fs::read_to_string(&path).ok()?;
             let preset = match path.extension().and_then(|e| e.to_str())? {
-                "toml" => parse_preset(&content).ok()?,
+                "toml" => match parse_preset(&content) {
+                    Ok(p) => p,
+                    Err(e) => {
+                        eprintln!("warning: skipping {:?}: {}", path, e);
+                        return None;
+                    }
+                },
                 _ => EffectPreset::single_script(&content),
             };
             Some((name, preset))

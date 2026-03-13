@@ -13,7 +13,10 @@ use scene_runtime::RenderTaskRuntime;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let app_settings = Settings::new().expect("Failed to load configuration");
+    let app_settings = Settings::new().unwrap_or_else(|e| {
+        eprintln!("error: failed to load configuration: {}", e);
+        std::process::exit(1);
+    });
 
     let led = match drivers::create(&app_settings.led_controller.driver) {
         Ok(controller) => controller,
@@ -43,6 +46,10 @@ async fn main() -> std::io::Result<()> {
     println!("Server running at http://{}:{}", ip_address, port);
 
     let effects_config = EffectsConfig::from_dir(&app_settings.config_dir);
+    let prelude = effects::builder::build_prelude(&effects_config.functions);
+    for e in effects::validate_scripts(&effects_config, &prelude) {
+        eprintln!("warning: script error in {}", e);
+    }
 
     HttpServer::new(move || {
         let app = App::new()
