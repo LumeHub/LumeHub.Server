@@ -8,22 +8,31 @@
         inherit (builtins) fromTOML isAttrs isInt mapAttrs readFile;
         inherit (lib) mkEnableOption mkIf mkOption types;
         cfg = config.services.lumehub;
-        package = self.packages.${pkgs.system}.default;
+        package = self.packages.${pkgs.system}.default.override {
+            inherit (cfg) withGoogle;
+        };
 
         # Auto-generate typed options from config/default.toml so the NixOS
         # option schema always stays in sync with the server's defaults.
         mapOptions = mapAttrs (_: value:
             if isAttrs value
             then mapOptions value
-            else mkOption {
-                type    = if isInt value then types.int else types.str;
-                default = value;
-            });
+            else
+                mkOption {
+                    type =
+                        if isInt value
+                        then types.int
+                        else types.str;
+                    default = value;
+                });
 
-        configFile = pkgs.writers.writeTOML "lumehub-config.toml" (cfg.settings // {
-            server = cfg.settings.server // lib.optionalAttrs cfg.openFirewall {
-                ip_address = "0.0.0.0";
-            };
+        configFile = pkgs.writers.writeTOML "lumehub-config.toml" (cfg.settings
+        // {
+            server =
+                cfg.settings.server
+                // lib.optionalAttrs cfg.openFirewall {
+                    ip_address = "0.0.0.0";
+                };
         });
 
         # Resolve a value that is either an inline string or a file path.
@@ -39,25 +48,33 @@
             lib.mapAttrsToList (name: content: {
                 name = "effects/${name}.toml";
                 path = toFile name "toml" content;
-            }) cfg.extraEffects
+            })
+            cfg.extraEffects
             ++ lib.mapAttrsToList (name: content: {
                 name = "effects/${name}.rhai";
                 path = toFile name "rhai" content;
-            }) cfg.extraEffectsRhai
+            })
+            cfg.extraEffectsRhai
             ++ lib.mapAttrsToList (name: content: {
                 name = "functions/${name}.rhai";
                 path = toFile name "rhai" content;
-            }) cfg.extraFunctions
+            })
+            cfg.extraFunctions
         );
     in {
         options.services.lumehub = {
-            enable       = mkEnableOption "LumeHub LED controller server";
+            enable = mkEnableOption "LumeHub LED controller server";
             openFirewall = mkEnableOption "open firewall port for LumeHub";
+            withGoogle = mkOption {
+                type = types.bool;
+                default = true;
+                description = "Include Google Home integration. Disable to produce a smaller binary without Google fulfillment or OAuth.";
+            };
 
             settings = ../config/default.toml |> readFile |> fromTOML |> mapOptions;
 
             extraEffects = mkOption {
-                type    = types.attrsOf (types.either types.str types.path);
+                type = types.attrsOf (types.either types.str types.path);
                 default = {};
                 description = ''
                     Additional composite effect presets written in TOML.
@@ -81,7 +98,7 @@
             };
 
             extraEffectsRhai = mkOption {
-                type    = types.attrsOf (types.either types.str types.path);
+                type = types.attrsOf (types.either types.str types.path);
                 default = {};
                 description = ''
                     Additional single-layer script effects written in Rhai.
@@ -101,7 +118,7 @@
             };
 
             extraFunctions = mkOption {
-                type    = types.attrsOf (types.either types.str types.path);
+                type = types.attrsOf (types.either types.str types.path);
                 default = {};
                 description = ''
                     Additional Rhai helper functions prepended to every effect script as a prelude.
@@ -123,12 +140,12 @@
         config = mkIf cfg.enable {
             systemd.services.lumehub = {
                 description = "LumeHub LED controller server";
-                wantedBy    = ["multi-user.target"];
-                after       = ["network.target"];
+                wantedBy = ["multi-user.target"];
+                after = ["network.target"];
                 serviceConfig = {
-                    Type      = "simple";
+                    Type = "simple";
                     ExecStart = "${package}/bin/lumehub-server --config ${configFile} --config-dir ${configDir}";
-                    Restart   = "on-failure";
+                    Restart = "on-failure";
                 };
             };
 

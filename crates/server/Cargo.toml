@@ -1,0 +1,27 @@
+[package]
+name = "lumehub-server"
+version = "0.1.0"
+edition = "2024"
+
+[[bin]]
+name = "lumehub-server"
+path = "src/main.rs"
+
+[features]
+default = ["google"]
+google  = ["dep:api-google"]
+
+[dependencies]
+domain      = { workspace = true }
+engine      = { workspace = true }
+application = { workspace = true }
+effects     = { workspace = true }
+drivers     = { workspace = true }
+api         = { workspace = true }
+api-google  = { workspace = true, optional = true }
+api-legacy  = { workspace = true }
+actix-web   = { workspace = true }
+chrono      = { workspace = true }
+clap        = { workspace = true }
+config      = { workspace = true }
+serde       = { workspace = true }

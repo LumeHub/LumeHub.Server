@@ -8,10 +8,7 @@
 
     inputs = {
         nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-        naersk = {
-            url = "github:nix-community/naersk/master";
-            inputs.nixpkgs.follows = "nixpkgs";
-        };
+        crane.url = "github:ipetkov/crane";
         flake-parts = {
             url = "github:hercules-ci/flake-parts";
             inputs.nixpkgs-lib.follows = "nixpkgs";
@@ -26,9 +23,35 @@
             ];
             imports = [./nix/nixosModule.nix];
             perSystem = {pkgs, ...}: let
-                naersk-lib = pkgs.callPackage inputs.naersk {};
+                craneLib = inputs.crane.mkLib pkgs;
+
+                serverMeta = craneLib.crateNameFromCargoToml {
+                    cargoToml = ./crates/server/Cargo.toml;
+                };
+
+                commonArgs = serverMeta // {src = ./.;};
+
+                cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+
+                lumehub-server = pkgs.lib.makeOverridable ({withGoogle ? true}:
+                    craneLib.buildPackage (commonArgs
+                    // {inherit cargoArtifacts;}
+                    // pkgs.lib.optionalAttrs (!withGoogle) {
+                        cargoExtraArgs = "--no-default-features";
+                    })) {};
             in {
-                packages.default = naersk-lib.buildPackage ./.;
+                packages.default = lumehub-server;
+
+                checks = {
+                    inherit lumehub-server;
+                    clippy = craneLib.cargoClippy (commonArgs
+                    // {
+                        inherit cargoArtifacts;
+                        cargoClippyExtraArgs = "-- --deny warnings";
+                    });
+                    test = craneLib.cargoTest (commonArgs // {inherit cargoArtifacts;});
+                };
+
                 devShells.default = pkgs.mkShell {
                     buildInputs = with pkgs; [
                         cargo

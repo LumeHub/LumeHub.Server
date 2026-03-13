@@ -1,16 +1,37 @@
-[package]
-name = "lumehub-server"
-version = "0.1.0"
-edition = "2024"
+[workspace]
+members = [
+    "crates/domain",
+    "crates/engine",
+    "crates/application",
+    "crates/effects",
+    "crates/drivers",
+    "crates/api",
+    "crates/api/google",
+    "crates/api/legacy",
+    "crates/server",
+]
+resolver = "2"
 
-[dependencies]
-actix-web = "4.11.0"
-chrono = "0.4.42"
-clap = { version = "4.5.49", features = ["derive", "env"] }
-config = "0.15.18"
-hsv = "0.1.1"
-serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.145"
-spidev = "0.7.0"
-rhai = { version = "1.24.0", features = ["sync"] }
+[workspace.dependencies]
+# Internal crates
+domain      = { path = "crates/domain" }
+engine      = { path = "crates/engine" }
+application = { path = "crates/application" }
+effects     = { path = "crates/effects" }
+drivers     = { path = "crates/drivers" }
+api         = { path = "crates/api" }
+api-google  = { path = "crates/api/google" }
+api-legacy  = { path = "crates/api/legacy" }
+
+# External crates
+actix-web   = "4.11.0"
+chrono      = "0.4.42"
+clap        = { version = "4.5.49", features = ["derive", "env"] }
+config      = "0.15.18"
+hsv         = "0.1.1"
 include_dir = "0.7"
+rhai        = { version = "1.24.0", features = ["sync"] }
+serde       = { version = "1.0.228", features = ["derive"] }
+serde_json  = "1.0.145"
+spidev      = "0.7.0"
+tempfile    = "3"

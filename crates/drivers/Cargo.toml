@@ -1,0 +1,10 @@
+[package]
+name = "drivers"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain = { workspace = true }
+engine = { workspace = true }
+serde  = { workspace = true }
+spidev = { workspace = true }

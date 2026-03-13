@@ -1,0 +1,17 @@
+[package]
+name = "effects"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+domain      = { workspace = true }
+engine      = { workspace = true }
+application = { workspace = true }
+rhai        = { workspace = true }
+serde       = { workspace = true }
+serde_json  = { workspace = true }
+config      = { workspace = true }
+include_dir = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
