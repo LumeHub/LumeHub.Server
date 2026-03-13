@@ -8,9 +8,6 @@
         inherit (builtins) fromTOML isAttrs isInt mapAttrs readFile;
         inherit (lib) mkEnableOption mkIf mkOption types;
         cfg = config.services.lumehub;
-        package = self.packages.${pkgs.system}.default.override {
-            inherit (cfg) withGoogle;
-        };
 
         # Auto-generate typed options from config/default.toml so the NixOS
         # option schema always stays in sync with the server's defaults.
@@ -64,6 +61,13 @@
     in {
         options.services.lumehub = {
             enable = mkEnableOption "LumeHub LED controller server";
+            package = mkOption {
+                type = types.package;
+                default = self.packages.${pkgs.system}.default.override {
+                    inherit (cfg) withGoogle;
+                };
+                description = "The LumeHub server package to run.";
+            };
             openFirewall = mkEnableOption "open firewall port for LumeHub";
             withGoogle = mkOption {
                 type = types.bool;
@@ -144,7 +148,7 @@
                 after = ["network.target"];
                 serviceConfig = {
                     Type = "simple";
-                    ExecStart = "${package}/bin/lumehub-server --config ${configFile} --config-dir ${configDir}";
+                    ExecStart = "${cfg.package}/bin/lumehub-server --config ${configFile} --config-dir ${configDir}";
                     Restart = "on-failure";
                 };
             };
