@@ -1,6 +1,8 @@
 pub mod commands;
 pub mod device;
+pub mod effects;
 pub mod endpoint;
+pub mod oauth;
 pub mod request;
 pub mod response;
 

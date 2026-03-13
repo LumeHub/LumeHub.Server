@@ -1,8 +1,6 @@
 use serde::Deserialize;
 
-use crate::endpoints::google::device::{
-    google_to_internal_brightness, internal_to_google_brightness,
-};
+use crate::device::{google_to_internal_brightness, internal_to_google_brightness};
 use application::SceneRuntime;
 
 use super::super::request::ExecuteCommandType;

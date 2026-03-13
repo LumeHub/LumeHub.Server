@@ -13,7 +13,7 @@ use application::SceneRuntime;
 use super::commands;
 
 #[post("/smarthome")]
-async fn smarthome(
+pub async fn smarthome(
     req: web::Json<SmartHomeRequest>,
     runtime: web::Data<dyn SceneRuntime>,
     command_dispatcher: web::Data<commands::CommandDispatcher>,

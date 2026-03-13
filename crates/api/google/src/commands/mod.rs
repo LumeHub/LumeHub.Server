@@ -12,7 +12,7 @@ use serde::de::DeserializeOwned;
 
 use super::request::{CommandRequest, ExecuteCommandType};
 use super::response::{CommandResponse, CommandStatus};
-use crate::endpoints::google::device::device_states_from_snapshot;
+use crate::device::device_states_from_snapshot;
 
 pub trait GoogleCommand: Send + Sync {
     fn command_type(&self) -> ExecuteCommandType;
