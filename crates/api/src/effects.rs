@@ -4,8 +4,9 @@ use std::sync::Arc;
 use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
 use serde::{Deserialize, Serialize};
 
-use application::{BusProxy, SceneRuntime, SignalValue};
+use application::{BusProxy, SceneRuntime, SignalError, SignalValue};
 use domain::Rgb;
+use effects::EffectError;
 use effects::builder::{InitialState, build_composite, build_prelude};
 use effects::config::EffectsConfig;
 use effects::preset::EffectPreset;
@@ -45,12 +46,40 @@ pub async fn execute_preset(
     let (composite, bus) =
         match build_composite(&registry, &preset, &state, prelude, &effects.presets) {
             Ok(result) => result,
-            Err(msg) => return HttpResponse::BadRequest().body(msg),
+            Err(e) => {
+                eprintln!("error: preset '{}' failed to build: {}", preset_name, e);
+                return match e {
+                    EffectError::UnknownEffect(name) => HttpResponse::InternalServerError()
+                        .body(format!("unknown effect type '{}' in preset config", name)),
+                    EffectError::NestingTooDeep => {
+                        HttpResponse::InternalServerError().body("preset nesting too deep")
+                    }
+                    EffectError::ScriptCompile(ref err) => HttpResponse::InternalServerError()
+                        .body(format!("script compile error in preset: {}", err)),
+                    EffectError::InvalidParams {
+                        ref effect,
+                        ref source,
+                    } => HttpResponse::InternalServerError()
+                        .body(format!("invalid params for '{}': {}", effect, source)),
+                    EffectError::LayerBuild {
+                        ref effect,
+                        ref source,
+                    } => HttpResponse::InternalServerError()
+                        .body(format!("layer '{}': {}", effect, source)),
+                    EffectError::SignalScript {
+                        ref signal,
+                        ref source,
+                    } => HttpResponse::InternalServerError()
+                        .body(format!("signal '{}': {}", signal, source)),
+                };
+            }
         };
 
     // Apply user animated overrides — these beat preset animations.
     for (name, code) in &signal_scripts {
-        let _ = bus.set_animated(name, code);
+        if let Err(e) = bus.set_animated(name, code) {
+            eprintln!("warning: signal override '{}' script error: {}", name, e);
+        }
     }
     // Apply user static overrides — these beat everything (incl. animations).
     for (name, &color) in &state.signal_colors {
@@ -110,7 +139,9 @@ pub async fn set_signal(
 
     match result {
         Ok(()) => HttpResponse::Ok().finish(),
-        Err(e) => HttpResponse::BadRequest().body(format!("script error: {}", e)),
+        Err(SignalError::ScriptCompile(msg)) => {
+            HttpResponse::BadRequest().body(format!("script compile error: {}", msg))
+        }
     }
 }
 

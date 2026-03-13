@@ -6,6 +6,7 @@ use hsv::hsv_to_rgb;
 
 use super::super::request::ExecuteCommandType;
 use super::GoogleCommandWithParams;
+use crate::error::GoogleCommandError;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -32,7 +33,7 @@ pub struct ColorAbsoluteParams {
     pub color: ColorAbsoluteColor,
 }
 
-fn parse_color(color: &ColorAbsoluteColor) -> Result<Rgb, String> {
+fn parse_color(color: &ColorAbsoluteColor) -> Result<Rgb, GoogleCommandError> {
     if let Some(spectrum_rgb) = color.spectrum_rgb {
         return Ok(Rgb::from_spectrum_rgb(spectrum_rgb));
     }
@@ -43,7 +44,7 @@ fn parse_color(color: &ColorAbsoluteColor) -> Result<Rgb, String> {
     if let Some(kelvin) = color.temperature {
         return Ok(Rgb::from_temperature_k(kelvin));
     }
-    Err("noColorProvided".to_string())
+    Err(GoogleCommandError::NoColorProvided)
 }
 
 pub struct ColorAbsoluteCommand;
@@ -55,7 +56,11 @@ impl GoogleCommandWithParams for ColorAbsoluteCommand {
         ExecuteCommandType::ColorAbsolute
     }
 
-    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
+    fn handle(
+        &self,
+        params: Self::Params,
+        runtime: &dyn SceneRuntime,
+    ) -> Result<(), GoogleCommandError> {
         let color = parse_color(&params.color)?;
         runtime.set_color(color);
         Ok(())

@@ -100,10 +100,9 @@ fn load_from_fs(dir: &Path) -> EffectsConfig {
     EffectsConfig { presets, functions }
 }
 
-fn parse_preset(content: &str) -> Result<EffectPreset, String> {
+fn parse_preset(content: &str) -> Result<EffectPreset, config::ConfigError> {
     config::Config::builder()
         .add_source(config::File::from_str(content, config::FileFormat::Toml))
         .build()
         .and_then(|c| c.try_deserialize::<EffectPreset>())
-        .map_err(|e| e.to_string())
 }

@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use domain::Rgb;
+use effects::EffectError;
 use effects::bus::ParameterBus;
 use effects::layer::LayerEffect;
-use effects::registry::{EffectBuildError, EffectRegistry};
+use effects::registry::EffectRegistry;
 use serde_json::Value;
 
 struct Solid;
@@ -17,7 +18,7 @@ fn solid_builder(
     _params: Value,
     _bus: Arc<ParameterBus>,
     _prelude: &str,
-) -> Result<Arc<dyn LayerEffect>, EffectBuildError> {
+) -> Result<Arc<dyn LayerEffect>, EffectError> {
     Ok(Arc::new(Solid))
 }
 
@@ -36,7 +37,8 @@ fn unknown_layer_returns_error() {
     let registry = EffectRegistry::default();
     let bus = Arc::new(ParameterBus::new(255.0, 255.0));
     match registry.build_layer("does_not_exist", Value::Null, bus, "") {
-        Err(e) => assert!(e.0.contains("does_not_exist")),
+        Err(EffectError::UnknownEffect(name)) => assert!(name.contains("does_not_exist")),
+        Err(e) => panic!("expected UnknownEffect, got: {:?}", e),
         Ok(_) => panic!("expected error for unknown layer"),
     }
 }

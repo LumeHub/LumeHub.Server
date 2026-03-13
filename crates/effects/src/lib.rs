@@ -1,8 +1,10 @@
 pub(crate) mod compositor;
+pub mod error;
 pub mod preset;
 pub(crate) mod rhai;
 
 pub use compositor::{builder, bus, composite, layer, live_param, registry};
+pub use error::EffectError;
 pub use preset::config;
 
 pub fn build_registry() -> registry::EffectRegistry {

@@ -5,6 +5,7 @@ use application::SceneRuntime;
 
 use super::super::request::ExecuteCommandType;
 use super::GoogleCommandWithParams;
+use crate::error::GoogleCommandError;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -21,7 +22,11 @@ impl GoogleCommandWithParams for BrightnessAbsoluteCommand {
         ExecuteCommandType::BrightnessAbsolute
     }
 
-    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
+    fn handle(
+        &self,
+        params: Self::Params,
+        runtime: &dyn SceneRuntime,
+    ) -> Result<(), GoogleCommandError> {
         runtime.set_brightness(google_to_internal_brightness(params.brightness));
         Ok(())
     }

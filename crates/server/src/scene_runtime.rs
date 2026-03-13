@@ -9,7 +9,9 @@ use effects::bus::PRIMARY_COLOR;
 
 #[cfg(feature = "google")]
 use api_google::effects::{ColorLoop, Sleep, Wake};
-use application::{BusProxy, SceneRuntime, SceneSnapshot, SignalOverrides, SignalValue};
+use application::{
+    BusProxy, SceneRuntime, SceneSnapshot, SignalError, SignalOverrides, SignalValue,
+};
 use domain::Rgb;
 
 struct SceneState {
@@ -165,7 +167,7 @@ impl SceneRuntime for RenderTaskRuntime {
         }));
     }
 
-    fn set_signal(&self, name: &str, value: SignalValue) -> Result<(), String> {
+    fn set_signal(&self, name: &str, value: SignalValue) -> Result<(), SignalError> {
         let mut state = self.state.lock().unwrap();
         match value {
             SignalValue::Color(color) => {

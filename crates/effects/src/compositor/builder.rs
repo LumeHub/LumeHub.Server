@@ -7,6 +7,7 @@ use super::bus::{DEFAULT_SIGNAL_SPEED, PRIMARY_COLOR, ParameterBus, SECONDARY_CO
 use super::composite::CompositeEffect;
 use super::layer::CompositeLayer;
 use super::registry::EffectRegistry;
+use crate::error::EffectError;
 use crate::preset::{EffectPreset, LayerPreset, SignalDef};
 use domain::{BlendMode, Rgb};
 
@@ -32,7 +33,7 @@ pub fn build_composite(
     state: &InitialState,
     prelude: String,
     all_presets: &HashMap<String, EffectPreset>,
-) -> Result<(CompositeEffect, Arc<ParameterBus>), String> {
+) -> Result<(CompositeEffect, Arc<ParameterBus>), EffectError> {
     let all_signals = collect_all_signals(preset, all_presets, 0);
 
     let mut signal_defs: HashMap<String, SignalInit> = state
@@ -90,7 +91,10 @@ pub fn build_composite(
         })
         .try_for_each(|(name, code)| {
             bus.set_animated(name, code)
-                .map_err(|e| format!("preset signal '{}' script error: {}", name, e))
+                .map_err(|e| EffectError::SignalScript {
+                    signal: name.clone(),
+                    source: Box::new(e),
+                })
         })?;
 
     let layers = build_layers(registry, &preset.layers, &bus, &prelude, all_presets, 0)?;
@@ -152,9 +156,9 @@ fn build_layers(
     prelude: &str,
     all_presets: &HashMap<String, EffectPreset>,
     depth: usize,
-) -> Result<Vec<CompositeLayer>, String> {
+) -> Result<Vec<CompositeLayer>, EffectError> {
     if depth > 8 {
-        return Err("preset nesting too deep (max 8)".into());
+        return Err(EffectError::NestingTooDeep);
     }
     layers.iter().try_fold(Vec::new(), |mut acc, layer| {
         if let Some(sub_preset) = all_presets.get(&layer.effect) {
@@ -206,7 +210,7 @@ fn leaf_layer(
     layer: &LayerPreset,
     bus: &Arc<ParameterBus>,
     prelude: &str,
-) -> Result<CompositeLayer, String> {
+) -> Result<CompositeLayer, EffectError> {
     let params = Value::Object(layer.params.clone().into_iter().collect());
     registry
         .build_layer(&layer.effect, params, Arc::clone(bus), prelude)
@@ -219,5 +223,8 @@ fn leaf_layer(
                 .unwrap_or(BlendMode::Override),
             opacity_gradient: layer.opacity_gradient,
         })
-        .map_err(|e| format!("error building layer '{}': {}", layer.effect, e.0))
+        .map_err(|e| EffectError::LayerBuild {
+            effect: layer.effect.clone(),
+            source: Box::new(e),
+        })
 }

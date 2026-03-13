@@ -9,7 +9,8 @@ use serde_json::Value;
 use super::{make_script_engine, parse_color};
 use crate::compositor::bus::{PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
 use crate::compositor::layer::LayerEffect;
-use crate::compositor::registry::{EffectBuildError, EffectRegistry};
+use crate::compositor::registry::EffectRegistry;
+use crate::error::EffectError;
 use domain::Rgb;
 
 #[derive(Deserialize)]
@@ -79,7 +80,10 @@ impl LayerEffect for Script {
 pub fn register(registry: &mut EffectRegistry) {
     registry.register_layer("script", |params, bus, prelude| {
         let p: ScriptParams =
-            serde_json::from_value(params).map_err(|e| EffectBuildError(e.to_string()))?;
+            serde_json::from_value(params).map_err(|e| EffectError::InvalidParams {
+                effect: "script".to_string(),
+                source: e,
+            })?;
 
         let mut extra_vars: Vec<(String, f64)> = p
             .vars
@@ -94,7 +98,7 @@ pub fn register(registry: &mut EffectRegistry) {
         let full_code = format!("{prelude}\n{code}", code = p.code);
         let ast = engine
             .compile(&full_code)
-            .map_err(|e| EffectBuildError(format!("script compile error: {}", e)))?;
+            .map_err(EffectError::ScriptCompile)?;
 
         Ok(Arc::new(Script {
             engine,

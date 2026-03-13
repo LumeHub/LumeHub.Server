@@ -1,5 +1,7 @@
 use serde::{Deserialize, de::DeserializeOwned};
 
+use crate::error::GoogleCommandError;
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SmartHomeRequest {
@@ -47,15 +49,15 @@ pub struct CommandRequest {
 }
 
 impl CommandRequest {
-    pub fn get_params<T: DeserializeOwned>(&self) -> Result<T, String> {
+    pub fn get_params<T: DeserializeOwned>(&self) -> Result<T, GoogleCommandError> {
         let params_value = self
             .execution
             .first()
-            .ok_or_else(|| "badRequest".to_string())?
+            .ok_or(GoogleCommandError::BadRequest)?
             .params
             .clone();
 
-        serde_json::from_value(params_value).map_err(|_| "badRequest".to_string())
+        serde_json::from_value(params_value).map_err(|_| GoogleCommandError::BadRequest)
     }
 }
 

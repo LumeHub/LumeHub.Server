@@ -4,10 +4,11 @@ use std::sync::{Arc, RwLock};
 
 use rhai::{AST, Engine, Scope};
 
-use application::BusProxy;
+use application::{BusProxy, SignalError};
 use domain::Rgb;
 
 use super::live_param::LiveParam;
+use crate::error::EffectError;
 use crate::rhai::{make_signal_engine, parse_color};
 
 pub const PRIMARY_COLOR: &str = "primary_color";
@@ -24,9 +25,9 @@ struct SignalScript {
 }
 
 impl SignalScript {
-    fn new(code: &str, from_color: Rgb, fade_frames: usize) -> Result<Arc<Self>, String> {
+    fn new(code: &str, from_color: Rgb, fade_frames: usize) -> Result<Arc<Self>, EffectError> {
         let engine = make_signal_engine();
-        let ast = engine.compile(code).map_err(|e| e.to_string())?;
+        let ast = engine.compile(code).map_err(EffectError::ScriptCompile)?;
         Ok(Arc::new(Self {
             engine,
             ast,
@@ -109,7 +110,7 @@ impl ParameterBus {
         }
     }
 
-    pub fn set_animated(&self, name: &str, code: &str) -> Result<(), String> {
+    pub fn set_animated(&self, name: &str, code: &str) -> Result<(), EffectError> {
         let current = self
             .colors
             .read()
@@ -147,8 +148,9 @@ impl BusProxy for ParameterBus {
         self.brightness.set(value);
     }
 
-    fn set_animated(&self, name: &str, code: &str) -> Result<(), String> {
+    fn set_animated(&self, name: &str, code: &str) -> Result<(), SignalError> {
         ParameterBus::set_animated(self, name, code)
+            .map_err(|e| SignalError::ScriptCompile(e.to_string()))
     }
 
     fn all_colors(&self) -> HashMap<String, Rgb> {

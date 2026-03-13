@@ -13,16 +13,25 @@ use serde::de::DeserializeOwned;
 use super::request::{CommandRequest, ExecuteCommandType};
 use super::response::{CommandResponse, CommandStatus};
 use crate::device::device_states_from_snapshot;
+use crate::error::GoogleCommandError;
 
 pub trait GoogleCommand: Send + Sync {
     fn command_type(&self) -> ExecuteCommandType;
-    fn handle(&self, cmd_req: &CommandRequest, runtime: &dyn SceneRuntime) -> Result<(), String>;
+    fn handle(
+        &self,
+        cmd_req: &CommandRequest,
+        runtime: &dyn SceneRuntime,
+    ) -> Result<(), GoogleCommandError>;
 }
 
 pub trait GoogleCommandWithParams: Send + Sync {
     type Params: DeserializeOwned;
     fn command_type(&self) -> ExecuteCommandType;
-    fn handle(&self, params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String>;
+    fn handle(
+        &self,
+        params: Self::Params,
+        runtime: &dyn SceneRuntime,
+    ) -> Result<(), GoogleCommandError>;
 }
 
 impl<T> GoogleCommand for T
@@ -33,7 +42,11 @@ where
         <Self as GoogleCommandWithParams>::command_type(self)
     }
 
-    fn handle(&self, cmd_req: &CommandRequest, runtime: &dyn SceneRuntime) -> Result<(), String> {
+    fn handle(
+        &self,
+        cmd_req: &CommandRequest,
+        runtime: &dyn SceneRuntime,
+    ) -> Result<(), GoogleCommandError> {
         cmd_req
             .get_params::<T::Params>()
             .and_then(|params| self.handle(params, runtime))
@@ -110,7 +123,7 @@ impl CommandDispatcher {
                         error_code: None,
                     })
                     .collect(),
-                Err(e) => make_error_responses(&e),
+                Err(e) => make_error_responses(&e.to_string()),
             }
         } else {
             make_error_responses("unsupportedCommand")

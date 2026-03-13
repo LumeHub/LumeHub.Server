@@ -5,12 +5,10 @@ use serde_json::Value;
 
 use super::bus::ParameterBus;
 use super::layer::LayerEffect;
+use crate::error::EffectError;
 
 pub type LayerBuilder =
-    fn(Value, Arc<ParameterBus>, &str) -> Result<Arc<dyn LayerEffect>, EffectBuildError>;
-
-#[derive(Debug)]
-pub struct EffectBuildError(pub String);
+    fn(Value, Arc<ParameterBus>, &str) -> Result<Arc<dyn LayerEffect>, EffectError>;
 
 #[derive(Clone, Default)]
 pub struct EffectRegistry {
@@ -28,11 +26,11 @@ impl EffectRegistry {
         params: Value,
         bus: Arc<ParameterBus>,
         prelude: &str,
-    ) -> Result<Arc<dyn LayerEffect>, EffectBuildError> {
+    ) -> Result<Arc<dyn LayerEffect>, EffectError> {
         let builder = self
             .layer_builders
             .get(name)
-            .ok_or_else(|| EffectBuildError(format!("unknown layer effect: {}", name)))?;
+            .ok_or_else(|| EffectError::UnknownEffect(name.to_string()))?;
         builder(params, bus, prelude)
     }
 }

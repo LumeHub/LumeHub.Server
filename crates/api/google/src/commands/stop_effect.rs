@@ -4,6 +4,7 @@ use application::SceneRuntime;
 
 use super::super::request::ExecuteCommandType;
 use super::GoogleCommandWithParams;
+use crate::error::GoogleCommandError;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,7 +19,11 @@ impl GoogleCommandWithParams for StopEffectCommand {
         ExecuteCommandType::StopEffect
     }
 
-    fn handle(&self, _params: Self::Params, runtime: &dyn SceneRuntime) -> Result<(), String> {
+    fn handle(
+        &self,
+        _params: Self::Params,
+        runtime: &dyn SceneRuntime,
+    ) -> Result<(), GoogleCommandError> {
         runtime.stop_effect();
         Ok(())
     }
