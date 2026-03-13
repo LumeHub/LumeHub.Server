@@ -1,6 +1,8 @@
-use crate::{controller::Controller, impl_pixel_access_for_controller};
-use domain::Rgb;
 use std::io::{self, Write};
+
+use domain::Rgb;
+
+use crate::{Controller, impl_pixel_access};
 
 pub struct Console {
     pixels: Vec<Rgb>,
@@ -25,4 +27,4 @@ impl Controller for Console {
     }
 }
 
-impl_pixel_access_for_controller!(Console);
+impl_pixel_access!(Console);
