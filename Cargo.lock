@@ -289,6 +289,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "api"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "application",
+ "domain",
+ "effects",
+ "engine",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "api-google"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "application",
+ "domain",
+ "engine",
+ "hsv",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "api-legacy"
+version = "0.1.0"
+dependencies = [
+ "actix-web",
+ "application",
+ "domain",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "application"
 version = "0.1.0"
 dependencies = [
@@ -646,6 +683,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "drivers"
+version = "0.1.0"
+dependencies = [
+ "domain",
+ "engine",
+ "serde",
+ "spidev",
+]
+
+[[package]]
 name = "effects"
 version = "0.1.0"
 dependencies = [
@@ -657,6 +704,7 @@ dependencies = [
  "rhai",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -701,6 +749,12 @@ dependencies = [
  "libc",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "fastrand"
+version = "2.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "find-msvc-tools"
@@ -1103,6 +1157,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b5b646652bf6661599e1da8901b3b9522896f01e736bad5f723fe7a3a27f899d"
 
 [[package]]
+name = "linux-raw-sys"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32a66949e030da00e8c7d4434b251670a91556f4144941d37452769c25d58a53"
+
+[[package]]
 name = "litemap"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1145,19 +1205,18 @@ name = "lumehub-server"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "api",
+ "api-google",
+ "api-legacy",
  "application",
  "chrono",
  "clap",
  "config",
  "domain",
+ "drivers",
  "effects",
  "engine",
- "hsv",
- "include_dir",
- "rhai",
  "serde",
- "serde_json",
- "spidev",
 ]
 
 [[package]]
@@ -1535,6 +1594,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustix"
+version = "1.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190"
+dependencies = [
+ "bitflags",
+ "errno",
+ "libc",
+ "linux-raw-sys",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1776,6 +1848,19 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "tempfile"
+version = "3.27.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
+dependencies = [
+ "fastrand",
+ "getrandom 0.3.4",
+ "once_cell",
+ "rustix",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
