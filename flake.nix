@@ -33,7 +33,12 @@
 
                 cargoArtifacts = craneLib.buildDepsOnly commonArgs;
 
-                lumehub-server = craneLib.buildPackage (commonArgs // {inherit cargoArtifacts;});
+                lumehub-server = pkgs.lib.makeOverridable ({withGoogle ? true}:
+                    craneLib.buildPackage (commonArgs
+                    // {inherit cargoArtifacts;}
+                    // pkgs.lib.optionalAttrs (!withGoogle) {
+                        cargoExtraArgs = "--no-default-features";
+                    })) {};
             in {
                 packages.default = lumehub-server;
 
