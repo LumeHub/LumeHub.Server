@@ -11,7 +11,7 @@ let base = (a + b + c) / 3.0 * 0.8 + 0.5;
 let x  = p * 6.0 + time * speed * 0.013;
 let ix = floor(x).to_int();
 let fx = x - floor(x);
-let n  = mix(hash(ix * 23 + 7), hash((ix + 1) * 23 + 7), fx * fx * (3.0 - 2.0 * fx));
+let n  = mix(hash(ix * 23 + 7), hash((ix + 1) * 23 + 7), smoothstep(0.0, 1.0, fx));
 
 heat_color(clamp(base * 0.78 + n * 0.22, 0.0, 0.72))
 """

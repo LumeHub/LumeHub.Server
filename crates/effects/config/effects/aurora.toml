@@ -3,9 +3,9 @@
 effect = "script"
 code   = """
 let p  = pixel.to_float();
-let w1 = sin(p * 0.09  + time * 0.020) * 0.5 + 0.5;
-let w2 = sin(p * 0.05  - time * 0.013 + 1.9) * 0.5 + 0.5;
-let w3 = sin(p * 0.13  + time * 0.017 + 4.1) * 0.5 + 0.5;
+let w1 = wave(p * 0.09  + time * 0.020);
+let w2 = wave(p * 0.05  - time * 0.013 + 1.9);
+let w3 = wave(p * 0.13  + time * 0.017 + 4.1);
 let intensity = pow((w1 * w2 + w2 * w3) / 2.0, 1.5);
 let hue = 130.0 + w1 * 80.0 + w3 * 30.0;
 dim(from_hue(hue), intensity)
