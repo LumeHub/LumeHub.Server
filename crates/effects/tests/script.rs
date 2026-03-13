@@ -100,6 +100,59 @@ fn build_composite_initializes_primary_color_from_initial() {
 }
 
 #[test]
+fn wave_returns_normalized_sine() {
+    let layer = build_registry()
+        .build_layer(
+            "script",
+            serde_json::json!({ "code": "if wave(0.0) > 0.49 && wave(0.0) < 0.51 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
+            make_bus(),
+            "",
+        )
+        .unwrap();
+    assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
+}
+
+#[test]
+fn smoothstep_clamps_below_lo() {
+    let layer = build_registry()
+        .build_layer(
+            "script",
+            serde_json::json!({ "code": "if smoothstep(10.0, 20.0, 5.0) == 0.0 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
+            make_bus(),
+            "",
+        )
+        .unwrap();
+    assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
+}
+
+#[test]
+fn smoothstep_clamps_above_hi() {
+    let layer = build_registry()
+        .build_layer(
+            "script",
+            serde_json::json!({ "code": "if smoothstep(10.0, 20.0, 25.0) == 1.0 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
+            make_bus(),
+            "",
+        )
+        .unwrap();
+    assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
+}
+
+#[test]
+fn remap_maps_range() {
+    let layer = build_registry()
+        .build_layer(
+            "script",
+            // remap 0.5 from [0,1] to [0,100] → 50
+            serde_json::json!({ "code": "if remap(0.5, 0.0, 1.0, 0.0, 100.0) == 50.0 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
+            make_bus(),
+            "",
+        )
+        .unwrap();
+    assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
+}
+
+#[test]
 fn prelude_functions_are_available_in_script() {
     let layer = build_registry()
         .build_layer(

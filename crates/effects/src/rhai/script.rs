@@ -6,10 +6,10 @@ use rhai::{AST, Engine, Scope};
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::bus::{PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
-use crate::layer::LayerEffect;
-use crate::registry::{EffectBuildError, EffectRegistry};
-use crate::rhai::{make_script_engine, parse_color};
+use crate::compositor::bus::{PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
+use crate::compositor::layer::LayerEffect;
+use crate::compositor::registry::{EffectBuildError, EffectRegistry};
+use super::{make_script_engine, parse_color};
 use domain::Rgb;
 
 #[derive(Deserialize)]
