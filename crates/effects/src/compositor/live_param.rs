@@ -2,7 +2,7 @@ use std::sync::{Arc, RwLock};
 
 use domain::Rgb;
 
-pub(crate) trait Interpolatable: Clone + Send + Sync + 'static {
+pub trait Interpolatable: Clone + Send + Sync + 'static {
     fn step_toward(&self, target: &Self, speed: f32) -> Self;
     fn is_reached(&self, target: &Self) -> bool;
 }

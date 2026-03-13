@@ -1,5 +1,5 @@
 use domain::Rgb;
-use engine::{Output, RenderCommand};
+use engine::{Effect, FrameIter, Output, RenderCommand};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -123,4 +123,34 @@ fn execute_renders_effect_frames() {
     for (frame, color) in frames.iter().zip(expected.iter()) {
         assert!(frame.iter().all(|p| p == color));
     }
+}
+
+#[test]
+fn crossfade_blends_first_frame_between_current_and_target() {
+    struct Solid(Rgb);
+    impl Effect for Solid {
+        fn frames(&self, pixels: &[Rgb]) -> FrameIter {
+            let color = self.0;
+            let len = pixels.len();
+            Box::new(std::iter::repeat_with(move || vec![color; len]))
+        }
+    }
+
+    let (mock, shown) = MockOutput::new(2);
+    let (tx, rx) = mpsc::channel();
+    // Use 4 crossfade frames so the first rendered frame is a blend
+    engine::spawn(Box::new(mock), rx, 4);
+
+    // Set current pixels to white
+    tx.send(RenderCommand::SetColor(Rgb::new(255, 255, 255)))
+        .unwrap();
+    wait_for(&shown, 1);
+
+    // Crossfade to black over 4 frames; first blended frame should be grey-ish
+    tx.send(RenderCommand::Execute(Box::new(Solid(Rgb::BLACK))))
+        .unwrap();
+    let frames = wait_for(&shown, 2);
+    let blended = &frames[1];
+    // First frame of crossfade: t = 1/4 → should be darker than white but not black
+    assert!(blended[0].r < 255 && blended[0].r > 0);
 }
