@@ -45,10 +45,10 @@ async fn main() -> std::io::Result<()> {
                 break;
             }
             let state = state_rx.borrow_and_update().clone();
-            if let Ok(json) = serde_json::to_string(&state) {
-                if let Err(e) = tokio::fs::write(&state_file, json).await {
-                    eprintln!("warning: failed to save state: {}", e);
-                }
+            if let Ok(json) = serde_json::to_string(&state)
+                && let Err(e) = tokio::fs::write(&state_file, json).await
+            {
+                eprintln!("warning: failed to save state: {}", e);
             }
         }
     });
