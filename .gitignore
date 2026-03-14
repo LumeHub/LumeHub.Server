@@ -7,5 +7,8 @@ target
 # nix
 result
 
+# pre-commit
+.pre-commit-config.yaml
+
 # project specific
 config.toml

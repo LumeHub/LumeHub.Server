@@ -1,5 +1,9 @@
 {
-    perSystem = {pkgs, ...}: {
+    perSystem = {
+        config,
+        pkgs,
+        ...
+    }: {
         devShells.default = pkgs.mkShell {
             buildInputs = with pkgs; [
                 cargo
@@ -9,6 +13,7 @@
                 rustPackages.clippy
             ];
             RUST_SRC_PATH = pkgs.rustPlatform.rustLibSrc;
+            shellHook = config.pre-commit.installationScript;
         };
     };
 }
