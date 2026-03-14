@@ -4,7 +4,7 @@ mod settings;
 use std::sync::Arc;
 
 use actix_web::{App, HttpServer, web};
-use application::SceneRuntime;
+use application::{SceneRuntime, StateEventBus};
 use effects::config::EffectsConfig;
 use engine::EffectQueue;
 use settings::Settings;
@@ -32,7 +32,11 @@ async fn main() -> std::io::Result<()> {
         EffectQueue::new(app_settings.led_controller.crossfade_ms);
     let effect_registry = effects::build_registry();
 
-    let runtime: Arc<dyn SceneRuntime> = Arc::new(RenderTaskRuntime::new(effect_queue.clone()));
+    let event_bus = StateEventBus::new();
+    let runtime: Arc<dyn SceneRuntime> = Arc::new(RenderTaskRuntime::new(
+        effect_queue.clone(),
+        event_bus.clone(),
+    ));
 
     #[cfg(feature = "google")]
     let command_dispatcher = api_google::commands::CommandDispatcher::new();
@@ -67,8 +71,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(effect_registry.clone()))
             .app_data(web::Data::new(effects_config.clone()))
             .app_data(web::Data::from(Arc::clone(&runtime)))
+            .app_data(web::Data::new(event_bus.clone()))
             .configure(api::device::config)
             .configure(api::effects::config)
+            .configure(api::events::config)
             .configure(api_legacy::config);
 
         #[cfg(feature = "google")]

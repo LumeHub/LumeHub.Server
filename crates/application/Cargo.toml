@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 domain    = { workspace = true }
 thiserror = { workspace = true }
+serde     = { workspace = true }
+tokio     = { workspace = true }

@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use domain::Rgb;
+use serde::Serialize;
 
+#[derive(Clone, Serialize)]
 pub struct SceneSnapshot {
     pub on: bool,
     pub brightness: u8,
