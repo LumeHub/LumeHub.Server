@@ -63,7 +63,7 @@
             enable = mkEnableOption "LumeHub LED controller server";
             package = mkOption {
                 type = types.package;
-                default = self.packages.${pkgs.system}.default.override {
+                default = self.packages.${pkgs.stdenv.hostPlatform.system}.lumehub-server.override {
                     inherit (cfg) withGoogle;
                 };
                 description = "The LumeHub server package to run.";
