@@ -5,7 +5,7 @@
         pkgs,
         ...
     }: let
-        inherit (builtins) fromTOML isAttrs isInt mapAttrs readFile;
+        inherit (builtins) fromTOML isAttrs isBool isInt mapAttrs readFile;
         inherit (lib) mkEnableOption mkIf mkOption types;
         cfg = config.services.lumehub;
 
@@ -17,7 +17,9 @@
             else
                 mkOption {
                     type =
-                        if isInt value
+                        if isBool value
+                        then types.bool
+                        else if isInt value
                         then types.int
                         else types.str;
                     default = value;
@@ -153,7 +155,10 @@
                 };
             };
 
-            networking.firewall.allowedTCPPorts = mkIf cfg.openFirewall [cfg.settings.server.port];
+            networking.firewall = mkIf cfg.openFirewall {
+                allowedTCPPorts = [cfg.settings.server.port];
+                allowedUDPPorts = lib.optional cfg.settings.mdns.enable [cfg.settings.mdns.port];
+            };
         };
     };
 }

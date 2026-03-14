@@ -25,3 +25,4 @@ chrono      = { workspace = true }
 clap        = { workspace = true }
 config      = { workspace = true }
 serde       = { workspace = true }
+discovery   = { workspace = true }

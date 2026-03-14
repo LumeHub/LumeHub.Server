@@ -45,6 +45,16 @@ async fn main() -> std::io::Result<()> {
 
     println!("Server running at http://{}:{}", ip_address, port);
 
+    let _mdns = app_settings.mdns.enable.then(|| {
+        let mdns_config = discovery::Config {
+            name: app_settings.mdns.name.clone(),
+            port,
+        };
+        discovery::advertise(&mdns_config)
+            .map_err(|e| eprintln!("warning: mDNS advertisement failed: {}", e))
+            .ok()
+    });
+
     let effects_config = EffectsConfig::from_dir(&app_settings.config_dir);
     let prelude = effects::builder::build_prelude(&effects_config.functions);
     for e in effects::validate_scripts(&effects_config, &prelude) {

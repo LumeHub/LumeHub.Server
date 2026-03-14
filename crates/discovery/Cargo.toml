@@ -1,0 +1,10 @@
+[package]
+name = "discovery"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+mdns-sd = { workspace = true }
+
+[dev-dependencies]
+mdns-sd = { workspace = true }

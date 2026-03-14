@@ -10,5 +10,10 @@ crossfade_ms = 300
 ip_address = "127.0.0.1"
 port = 5000
 
+[mdns]
+enable = true
+port = 5353
+name = "LumeHub"
+
 [effects]
 presets = {}

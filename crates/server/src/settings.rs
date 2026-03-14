@@ -19,9 +19,17 @@ pub struct ServerConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct MdnsConfig {
+    pub enable: bool,
+    pub port: u16,
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Settings {
     pub led_controller: LedControllerConfig,
     pub server: ServerConfig,
+    pub mdns: MdnsConfig,
     #[serde(skip)]
     pub config_dir: PathBuf,
 }
