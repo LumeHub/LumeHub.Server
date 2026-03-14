@@ -29,6 +29,6 @@ pub enum EffectError {
         source: Box<EffectError>,
     },
 
-    #[error("preset nesting too deep (max 8)")]
-    NestingTooDeep,
+    #[error("preset nesting too deep (max {0})")]
+    NestingTooDeep(usize),
 }

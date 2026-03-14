@@ -51,9 +51,8 @@ pub async fn execute_preset(
                 return match e {
                     EffectError::UnknownEffect(name) => HttpResponse::InternalServerError()
                         .body(format!("unknown effect type '{}' in preset config", name)),
-                    EffectError::NestingTooDeep => {
-                        HttpResponse::InternalServerError().body("preset nesting too deep")
-                    }
+                    EffectError::NestingTooDeep(max) => HttpResponse::InternalServerError()
+                        .body(format!("preset nesting too deep (max {})", max)),
                     EffectError::ScriptCompile(ref err) => HttpResponse::InternalServerError()
                         .body(format!("script compile error in preset: {}", err)),
                     EffectError::InvalidParams {

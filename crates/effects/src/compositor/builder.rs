@@ -23,6 +23,8 @@ struct SignalInit {
     speed: f32,
 }
 
+const MAX_EFFECT_NESTING_DEPTH: usize = 8;
+
 pub fn build_prelude(functions: &HashMap<String, String>) -> String {
     functions.values().cloned().collect::<Vec<_>>().join("\n")
 }
@@ -133,7 +135,7 @@ fn collect_all_signals(
     all_presets: &HashMap<String, EffectPreset>,
     depth: usize,
 ) -> HashMap<String, SignalDef> {
-    if depth > 8 {
+    if depth > MAX_EFFECT_NESTING_DEPTH {
         return HashMap::new();
     }
     let mut signals = preset
@@ -157,8 +159,8 @@ fn build_layers(
     all_presets: &HashMap<String, EffectPreset>,
     depth: usize,
 ) -> Result<Vec<CompositeLayer>, EffectError> {
-    if depth > 8 {
-        return Err(EffectError::NestingTooDeep);
+    if depth > MAX_EFFECT_NESTING_DEPTH {
+        return Err(EffectError::NestingTooDeep(MAX_EFFECT_NESTING_DEPTH));
     }
     layers.iter().try_fold(Vec::new(), |mut acc, layer| {
         if let Some(sub_preset) = all_presets.get(&layer.effect) {
