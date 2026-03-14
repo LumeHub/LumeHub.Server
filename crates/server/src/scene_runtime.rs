@@ -13,6 +13,7 @@ use application::{
     BusProxy, SceneRuntime, SceneSnapshot, SignalError, SignalOverrides, SignalValue, StateEventBus,
 };
 use domain::Rgb;
+use persistence::PersistedState;
 
 enum ActiveScene {
     Idle,
@@ -35,32 +36,55 @@ struct SceneState {
     signal_scripts: HashMap<String, String>,
 }
 
-impl Default for SceneState {
-    fn default() -> Self {
-        Self {
-            on: true,
-            brightness: 255,
-            color: Rgb::BLACK,
-            scene: ActiveScene::Idle,
-            signal_colors: HashMap::new(),
-            signal_scripts: HashMap::new(),
-        }
-    }
-}
-
 pub struct RenderTaskRuntime {
     queue: EffectQueue,
     state: Arc<Mutex<SceneState>>,
     bus: StateEventBus,
+    state_tx: Option<tokio::sync::watch::Sender<PersistedState>>,
 }
 
 impl RenderTaskRuntime {
-    pub fn new(queue: EffectQueue, bus: StateEventBus) -> Self {
+    pub fn new(
+        queue: EffectQueue,
+        bus: StateEventBus,
+        initial: PersistedState,
+        state_tx: Option<tokio::sync::watch::Sender<PersistedState>>,
+    ) -> Self {
+        let state = SceneState {
+            on: initial.on,
+            brightness: initial.brightness,
+            color: initial.color,
+            scene: ActiveScene::Idle,
+            signal_colors: initial.signal_colors,
+            signal_scripts: initial.signal_scripts,
+        };
         Self {
             queue,
-            state: Arc::new(Mutex::new(SceneState::default())),
+            state: Arc::new(Mutex::new(state)),
             bus,
+            state_tx,
         }
+    }
+
+    fn push_state(&self, persisted: PersistedState) {
+        if let Some(tx) = &self.state_tx {
+            let _ = tx.send(persisted);
+        }
+    }
+}
+
+fn extract_persisted(state: &SceneState) -> PersistedState {
+    let active_effect = match &state.scene {
+        ActiveScene::Idle => None,
+        ActiveScene::Composite { name, .. } | ActiveScene::Timed { name, .. } => Some(name.clone()),
+    };
+    PersistedState {
+        on: state.on,
+        brightness: state.brightness,
+        color: state.color,
+        active_effect,
+        signal_colors: state.signal_colors.clone(),
+        signal_scripts: state.signal_scripts.clone(),
     }
 }
 
@@ -84,7 +108,7 @@ fn build_snapshot(state: &SceneState) -> SceneSnapshot {
 
 impl SceneRuntime for RenderTaskRuntime {
     fn set_color(&self, color: Rgb) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.color = color;
             state.on = true;
@@ -96,13 +120,14 @@ impl SceneRuntime for RenderTaskRuntime {
                 state.signal_colors.remove(PRIMARY_COLOR);
                 self.queue.send(RenderCommand::SetColor(color));
             }
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     fn set_brightness(&self, brightness: u8) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.brightness = brightness;
             if let ActiveScene::Composite { bus, .. } = &state.scene {
@@ -111,13 +136,14 @@ impl SceneRuntime for RenderTaskRuntime {
                 state.scene = ActiveScene::Idle;
                 self.queue.send(RenderCommand::SetBrightness(brightness));
             }
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     fn set_on_off(&self, on: bool) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.on = on;
             if let ActiveScene::Composite { bus, .. } = &state.scene {
@@ -126,35 +152,38 @@ impl SceneRuntime for RenderTaskRuntime {
                 state.scene = ActiveScene::Idle;
                 self.queue.send(RenderCommand::SetOnOff(on));
             }
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     fn halt(&self) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.scene = ActiveScene::Idle;
             self.queue.send(RenderCommand::Halt);
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     fn stop_effect(&self) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.scene = ActiveScene::Idle;
             let on = state.on;
             self.queue.send(RenderCommand::SetOnOff(on));
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     #[cfg(feature = "google")]
     fn start_color_loop(&self, duration: u64) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.on = true;
             state.scene = ActiveScene::Timed {
@@ -175,14 +204,15 @@ impl SceneRuntime for RenderTaskRuntime {
                     Rgb::new(148, 0, 211),
                 ],
             }));
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     #[cfg(feature = "google")]
     fn start_sleep(&self, duration: u64) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.on = true;
             state.scene = ActiveScene::Timed {
@@ -195,14 +225,15 @@ impl SceneRuntime for RenderTaskRuntime {
                 start_brightness,
                 target_color: Rgb::BLACK,
             }));
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     #[cfg(feature = "google")]
     fn start_wake(&self, duration: u64) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.on = true;
             state.scene = ActiveScene::Timed {
@@ -216,45 +247,51 @@ impl SceneRuntime for RenderTaskRuntime {
                 end_brightness,
                 start_color,
             }));
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     fn set_signal(&self, name: &str, value: SignalValue) -> Result<(), SignalError> {
-        let mut state = self.state.lock().unwrap();
-        match value {
-            SignalValue::Color(color) => {
-                state.signal_scripts.remove(name);
-                if name == PRIMARY_COLOR {
-                    state.color = color;
-                } else {
-                    state.signal_colors.insert(name.to_string(), color);
+        let persisted = {
+            let mut state = self.state.lock().unwrap();
+            match value {
+                SignalValue::Color(color) => {
+                    state.signal_scripts.remove(name);
+                    if name == PRIMARY_COLOR {
+                        state.color = color;
+                    } else {
+                        state.signal_colors.insert(name.to_string(), color);
+                    }
+                    if let ActiveScene::Composite { bus, .. } = &state.scene {
+                        bus.set_color(name, color);
+                    }
                 }
-                if let ActiveScene::Composite { bus, .. } = &state.scene {
-                    bus.set_color(name, color);
+                SignalValue::Script(code) => {
+                    if let ActiveScene::Composite { bus, .. } = &state.scene {
+                        bus.set_animated(name, &code)?;
+                    }
+                    state.signal_scripts.insert(name.to_string(), code);
                 }
             }
-            SignalValue::Script(code) => {
-                if let ActiveScene::Composite { bus, .. } = &state.scene {
-                    bus.set_animated(name, &code)?;
-                }
-                state.signal_scripts.insert(name.to_string(), code);
-            }
-        }
+            extract_persisted(&state)
+        };
+        self.push_state(persisted);
         Ok(())
     }
 
     fn attach_bus(&self, bus: Arc<dyn BusProxy>, effect_name: String) {
-        let snapshot = {
+        let (snapshot, persisted) = {
             let mut state = self.state.lock().unwrap();
             state.scene = ActiveScene::Composite {
                 name: effect_name,
                 bus,
             };
-            build_snapshot(&state)
+            (build_snapshot(&state), extract_persisted(&state))
         };
         self.bus.notify(snapshot);
+        self.push_state(persisted);
     }
 
     fn snapshot(&self) -> SceneSnapshot {

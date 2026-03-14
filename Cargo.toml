@@ -9,6 +9,7 @@ members = [
     "crates/api/google",
     "crates/api/legacy",
     "crates/discovery",
+    "crates/persistence",
     "crates/server",
 ]
 resolver = "2"
@@ -24,20 +25,21 @@ api         = { path = "crates/api" }
 api-google  = { path = "crates/api/google" }
 api-legacy  = { path = "crates/api/legacy" }
 discovery   = { path = "crates/discovery" }
+persistence = { path = "crates/persistence" }
 
 # External crates
-actix-web   = "4.11.0"
-chrono      = "0.4.42"
-clap        = { version = "4.5.49", features = ["derive", "env"] }
-config      = "0.15.18"
-hsv         = "0.1.1"
-include_dir = "0.7"
-rhai        = { version = "1.24.0", features = ["sync"] }
-serde       = { version = "1.0.228", features = ["derive"] }
-serde_json  = "1.0.145"
-spidev      = "0.7.0"
-tempfile    = "3"
+actix-web    = "4.11.0"
+chrono       = "0.4.42"
+clap         = { version = "4.5.49", features = ["derive", "env"] }
+config       = "0.15.18"
+hsv          = "0.1.1"
+include_dir  = "0.7"
+rhai         = { version = "1.24.0", features = ["sync"] }
+serde        = { version = "1.0.228", features = ["derive"] }
+serde_json   = "1.0.145"
+spidev       = "0.7.0"
+tempfile     = "3"
 thiserror    = "2"
 mdns-sd      = "0.18"
-tokio        = { version = "1", features = ["sync"] }
+tokio        = { version = "1", features = ["sync", "fs"] }
 futures-util = "0.3"

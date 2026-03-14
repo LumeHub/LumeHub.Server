@@ -150,8 +150,9 @@
                 after = ["network.target"];
                 serviceConfig = {
                     Type = "simple";
-                    ExecStart = "${cfg.package}/bin/lumehub-server --config ${configFile} --config-dir ${configDir}";
+                    ExecStart = "${cfg.package}/bin/lumehub-server --config ${configFile} --config-dir ${configDir} --state-dir $STATE_DIRECTORY";
                     Restart = "on-failure";
+                    StateDirectory = "lumehub";
                 };
             };
 

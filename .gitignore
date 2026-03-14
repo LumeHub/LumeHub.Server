@@ -11,4 +11,4 @@ result
 .pre-commit-config.yaml
 
 # project specific
-config.toml
+state.json

@@ -32,6 +32,8 @@ pub struct Settings {
     pub mdns: MdnsConfig,
     #[serde(skip)]
     pub config_dir: PathBuf,
+    #[serde(skip)]
+    pub state_dir: PathBuf,
 }
 
 #[derive(Parser)]
@@ -42,6 +44,9 @@ struct Args {
 
     #[arg(long, env = "LUMEHUB_CONFIG_DIR", default_value = "config")]
     config_dir: String,
+
+    #[arg(long, env = "LUMEHUB_STATE_DIR", default_value = ".")]
+    state_dir: String,
 }
 
 impl Settings {
@@ -62,6 +67,7 @@ impl Settings {
 
         let mut settings: Self = s.try_deserialize()?;
         settings.config_dir = PathBuf::from(args.config_dir);
+        settings.state_dir = PathBuf::from(args.state_dir);
         Ok(settings)
     }
 }

@@ -32,10 +32,33 @@ async fn main() -> std::io::Result<()> {
         EffectQueue::new(app_settings.led_controller.crossfade_ms);
     let effect_registry = effects::build_registry();
 
+    let state_file = app_settings.state_dir.join("state.json");
+    let initial_state = persistence::load(&state_file).unwrap_or_else(|e| {
+        eprintln!("warning: failed to load state: {}", e);
+        persistence::PersistedState::default()
+    });
+
+    let (state_tx, mut state_rx) = tokio::sync::watch::channel(initial_state.clone());
+    tokio::spawn(async move {
+        loop {
+            if state_rx.changed().await.is_err() {
+                break;
+            }
+            let state = state_rx.borrow_and_update().clone();
+            if let Ok(json) = serde_json::to_string(&state) {
+                if let Err(e) = tokio::fs::write(&state_file, json).await {
+                    eprintln!("warning: failed to save state: {}", e);
+                }
+            }
+        }
+    });
+
     let event_bus = StateEventBus::new();
     let runtime: Arc<dyn SceneRuntime> = Arc::new(RenderTaskRuntime::new(
         effect_queue.clone(),
         event_bus.clone(),
+        initial_state,
+        Some(state_tx),
     ));
 
     #[cfg(feature = "google")]

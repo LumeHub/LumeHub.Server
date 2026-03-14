@@ -26,3 +26,6 @@ clap        = { workspace = true }
 config      = { workspace = true }
 serde       = { workspace = true }
 discovery   = { workspace = true }
+persistence = { workspace = true }
+tokio       = { workspace = true }
+serde_json  = { workspace = true }
