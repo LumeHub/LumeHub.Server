@@ -52,12 +52,19 @@ fn blend_layer(
 }
 
 fn blend_pixel(base: Rgb, overlay: Rgb, mode: BlendMode, opacity: f32) -> Rgb {
+    let o = overlay.dim(opacity);
     match mode {
-        BlendMode::Override => base.lerp(overlay, opacity),
-        BlendMode::Add => Rgb {
-            r: base.r.saturating_add((overlay.r as f32 * opacity) as u8),
-            g: base.g.saturating_add((overlay.g as f32 * opacity) as u8),
-            b: base.b.saturating_add((overlay.b as f32 * opacity) as u8),
+        BlendMode::Override => base.lerp(o, opacity),
+        BlendMode::Add => base + o,
+        BlendMode::Screen => Rgb {
+            r: 255 - ((255 - base.r as u16) * (255 - o.r as u16) / 255) as u8,
+            g: 255 - ((255 - base.g as u16) * (255 - o.g as u16) / 255) as u8,
+            b: 255 - ((255 - base.b as u16) * (255 - o.b as u16) / 255) as u8,
+        },
+        BlendMode::Multiply => Rgb {
+            r: (base.r as u16 * o.r as u16 / 255) as u8,
+            g: (base.g as u16 * o.g as u16 / 255) as u8,
+            b: (base.b as u16 * o.b as u16 / 255) as u8,
         },
     }
 }
