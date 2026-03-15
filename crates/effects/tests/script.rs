@@ -1,33 +1,6 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use domain::Rgb;
 use effects::build_registry;
-use effects::builder::{InitialState, build_composite};
-use effects::bus::ParameterBus;
-use effects::preset::{EffectPreset, LayerPreset};
 use engine::Effect;
-
-fn make_bus() -> Arc<ParameterBus> {
-    Arc::new(ParameterBus::new(255.0, 255.0))
-}
-
-fn preset(code: &str) -> EffectPreset {
-    let mut params = HashMap::new();
-    params.insert(
-        "code".to_string(),
-        serde_json::Value::String(code.to_string()),
-    );
-    EffectPreset {
-        signals: HashMap::new(),
-        layers: vec![LayerPreset {
-            effect: "script".to_string(),
-            mode: None,
-            opacity_gradient: None,
-            params,
-        }],
-    }
-}
 
 #[test]
 fn script_renders_solid_color() {
@@ -35,8 +8,8 @@ fn script_renders_solid_color() {
         .build_layer(
             "script",
             serde_json::json!({ "code": "rgb(255, 0, 0)" }),
-            make_bus(),
-            "",
+            4,
+            0,
         )
         .unwrap();
     assert!(layer.render(4).iter().all(|p| *p == Rgb::new(255, 0, 0)));
@@ -48,8 +21,8 @@ fn script_pixel_variable_is_in_scope() {
         .build_layer(
             "script",
             serde_json::json!({ "code": "if pixel == 0 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
-            make_bus(),
-            "",
+            4,
+            0,
         )
         .unwrap();
     let frame = layer.render(4);
@@ -59,12 +32,8 @@ fn script_pixel_variable_is_in_scope() {
 
 #[test]
 fn script_compile_error_returns_err() {
-    let result = build_registry().build_layer(
-        "script",
-        serde_json::json!({ "code": "this is not valid rhai !!!" }),
-        make_bus(),
-        "",
-    );
+    let result =
+        build_registry().build_layer("script", serde_json::json!({ "code": "@@@ invalid" }), 4, 0);
     assert!(result.is_err());
 }
 
@@ -72,31 +41,9 @@ fn script_compile_error_returns_err() {
 fn script_unknown_layer_name_returns_err() {
     assert!(
         build_registry()
-            .build_layer("nonexistent", serde_json::json!({}), make_bus(), "")
+            .build_layer("nonexistent", serde_json::json!({}), 4, 0)
             .is_err()
     );
-}
-
-#[test]
-fn build_composite_initializes_primary_color_from_initial() {
-    let initial = Rgb::new(100, 50, 25);
-    let state = InitialState {
-        color: initial,
-        brightness: 255,
-        brightness_speed: 255.0,
-        signal_colors: HashMap::new(),
-    };
-    let (composite, bus) = build_composite(
-        &build_registry(),
-        &preset("rgb(0, 0, 0)"),
-        &state,
-        String::new(),
-        &HashMap::new(),
-    )
-    .unwrap();
-
-    assert_eq!(bus.all_colors()["primary_color"], initial);
-    assert!(composite.frames(&[Rgb::BLACK; 4]).next().is_some());
 }
 
 #[test]
@@ -105,8 +52,8 @@ fn wave_returns_normalized_sine() {
         .build_layer(
             "script",
             serde_json::json!({ "code": "if wave(0.0) > 0.49 && wave(0.0) < 0.51 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
-            make_bus(),
-            "",
+            1,
+            0,
         )
         .unwrap();
     assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
@@ -118,8 +65,8 @@ fn smoothstep_clamps_below_lo() {
         .build_layer(
             "script",
             serde_json::json!({ "code": "if smoothstep(10.0, 20.0, 5.0) == 0.0 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
-            make_bus(),
-            "",
+            1,
+            0,
         )
         .unwrap();
     assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
@@ -131,8 +78,8 @@ fn smoothstep_clamps_above_hi() {
         .build_layer(
             "script",
             serde_json::json!({ "code": "if smoothstep(10.0, 20.0, 25.0) == 1.0 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
-            make_bus(),
-            "",
+            1,
+            0,
         )
         .unwrap();
     assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
@@ -143,24 +90,34 @@ fn remap_maps_range() {
     let layer = build_registry()
         .build_layer(
             "script",
-            // remap 0.5 from [0,1] to [0,100] → 50
             serde_json::json!({ "code": "if remap(0.5, 0.0, 1.0, 0.0, 100.0) == 50.0 { rgb(255, 0, 0) } else { rgb(0, 0, 0) }" }),
-            make_bus(),
-            "",
+            1,
+            0,
         )
         .unwrap();
     assert_eq!(layer.render(1)[0], Rgb::new(255, 0, 0));
 }
 
 #[test]
-fn prelude_functions_are_available_in_script() {
-    let layer = build_registry()
-        .build_layer(
-            "script",
-            serde_json::json!({ "code": "rgb(double_red(100), 0, 0)" }),
-            make_bus(),
-            "fn double_red(r) { r * 2 }",
-        )
-        .unwrap();
-    assert!(layer.render(1).iter().all(|p| p.r == 200));
+fn build_composite_creates_valid_effect() {
+    use domain::BlendMode;
+    use effects::scene_builder::LayerSpec;
+    use effects::{LiveParam, build_composite};
+    use std::collections::HashMap;
+    use std::sync::Arc;
+
+    let params = HashMap::new();
+    let specs = [LayerSpec {
+        script: "rgb(255, 0, 0)",
+        param_defs: &[],
+        params: &params,
+        blend_mode: BlendMode::Override,
+        zone_start: 0,
+        zone_end: 4,
+        zone_transition: 0,
+    }];
+    let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
+    let composite = build_composite(&specs, 4, brightness).unwrap();
+    let frame = composite.frames(&[Rgb::BLACK; 4]).next().unwrap();
+    assert!(frame.iter().all(|p| *p == Rgb::new(255, 0, 0)));
 }

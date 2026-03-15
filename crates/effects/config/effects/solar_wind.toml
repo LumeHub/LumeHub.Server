@@ -1,7 +1,7 @@
-# Solar wind — aurora structure in warm oranges and yellows, like a chromosphere.
-[[layers]]
-effect = "script"
-code   = """
+name = "Solar Wind"
+
+[script]
+code = """
 let p  = pixel.to_float();
 let w1 = wave(p * 0.09  + time * 0.021);
 let w2 = wave(p * 0.05  - time * 0.014 + 1.3);

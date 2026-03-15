@@ -1,7 +1,7 @@
-# Bioluminescent deep ocean — aurora pattern in teal and blue, with a faint base glow.
-[[layers]]
-effect = "script"
-code   = """
+name = "Deep Ocean"
+
+[script]
+code = """
 let p  = pixel.to_float();
 let w1 = wave(p * 0.06  + time * 0.012);
 let w2 = wave(p * 0.10  - time * 0.008 + 1.7);

@@ -1,7 +1,18 @@
-[[layers]]
-effect = "script"
-speed  = 1.0
-code   = """
+name = "Lava"
+
+[[params]]
+name = "speed"
+label = "Speed"
+[params.control]
+type = "slider"
+min = 0.1
+max = 3.0
+[params.default]
+type = "number"
+value = 1.0
+
+[script]
+code = """
 let p = pixel.to_float() / len.to_float();
 let a = sin(p * 11.3  + time * speed * 0.040);
 let b = sin(p * 17.7  - time * speed * 0.031 + 2.0);

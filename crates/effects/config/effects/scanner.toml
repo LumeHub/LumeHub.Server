@@ -1,5 +1,35 @@
-[[layers]]
-effect = "script"
-speed  = 0.4
-width  = 8.0
-code   = "dim(rgb_f(pr, pg, pb), scanner_factor(pixel, len, time, speed, width))"
+name = "Scanner"
+
+[[params]]
+name = "color"
+label = "Color"
+[params.control]
+type = "color"
+[params.default]
+type = "color"
+value = {r = 255, g = 255, b = 255}
+
+[[params]]
+name = "speed"
+label = "Speed"
+[params.control]
+type = "slider"
+min = 0.1
+max = 2.0
+[params.default]
+type = "number"
+value = 0.4
+
+[[params]]
+name = "width"
+label = "Width"
+[params.control]
+type = "slider"
+min = 2.0
+max = 30.0
+[params.default]
+type = "number"
+value = 8.0
+
+[script]
+code = "dim(color, scanner_factor(pixel, len, time, speed, width))"

@@ -1,7 +1,7 @@
-# Flowing northern lights — overlapping sine waves with organic color shifts.
-[[layers]]
-effect = "script"
-code   = """
+name = "Aurora"
+
+[script]
+code = """
 let p  = pixel.to_float();
 let w1 = wave(p * 0.09  + time * 0.020);
 let w2 = wave(p * 0.05  - time * 0.013 + 1.9);

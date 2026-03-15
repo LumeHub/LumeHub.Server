@@ -1,7 +1,18 @@
-[[layers]]
-effect = "script"
-speed  = 1.5
-code   = """
+name = "Rainbow"
+
+[[params]]
+name = "speed"
+label = "Speed"
+[params.control]
+type = "slider"
+min = 0.1
+max = 5.0
+[params.default]
+type = "number"
+value = 1.5
+
+[script]
+code = """
 let hue_offset = (time * speed) % 360.0;
 from_hue(pixel.to_float() / len.to_float() * 360.0 + hue_offset)
 """
