@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::Path;
 
 use domain::Rgb;
@@ -21,10 +20,6 @@ pub struct PersistedState {
     pub color: Rgb,
     #[serde(default)]
     pub active_effect: Option<String>,
-    #[serde(default)]
-    pub signal_colors: HashMap<String, Rgb>,
-    #[serde(default)]
-    pub signal_scripts: HashMap<String, String>,
 }
 
 impl Default for PersistedState {
@@ -34,8 +29,6 @@ impl Default for PersistedState {
             brightness: 255,
             color: Rgb::BLACK,
             active_effect: None,
-            signal_colors: HashMap::new(),
-            signal_scripts: HashMap::new(),
         }
     }
 }

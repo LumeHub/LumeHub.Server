@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use domain::Rgb;
 use persistence::{PersistedState, load, save};
 
@@ -24,8 +22,6 @@ fn save_and_load_round_trips() {
         brightness: 128,
         color: Rgb::new(10, 20, 30),
         active_effect: Some("lava".to_string()),
-        signal_colors: HashMap::from([("primary_color".to_string(), Rgb::new(255, 0, 0))]),
-        signal_scripts: HashMap::from([("wave".to_string(), "sin(t)".to_string())]),
     };
 
     save(&path, &original).expect("save failed");
@@ -35,8 +31,6 @@ fn save_and_load_round_trips() {
     assert_eq!(restored.brightness, original.brightness);
     assert_eq!(restored.color, original.color);
     assert_eq!(restored.active_effect, original.active_effect);
-    assert_eq!(restored.signal_colors, original.signal_colors);
-    assert_eq!(restored.signal_scripts, original.signal_scripts);
 }
 
 #[test]
@@ -52,7 +46,6 @@ fn load_with_corrupt_file_returns_error() {
 fn missing_optional_fields_deserialize_to_defaults() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("state.json");
-    // Old state file without signal fields
     std::fs::write(
         &path,
         r#"{"on":true,"brightness":200,"color":{"r":0,"g":0,"b":0}}"#,
@@ -61,6 +54,19 @@ fn missing_optional_fields_deserialize_to_defaults() {
 
     let state = load(&path).expect("load failed");
     assert!(state.active_effect.is_none());
-    assert!(state.signal_colors.is_empty());
-    assert!(state.signal_scripts.is_empty());
+}
+
+#[test]
+fn old_state_with_signal_fields_ignored_gracefully() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("state.json");
+    // Old state.json with signal_colors and signal_scripts fields — should still load
+    std::fs::write(
+        &path,
+        r#"{"on":true,"brightness":255,"color":{"r":0,"g":0,"b":0},"signal_colors":{},"signal_scripts":{}}"#,
+    )
+    .unwrap();
+
+    let state = load(&path).expect("load failed with old state format");
+    assert!(state.on);
 }
