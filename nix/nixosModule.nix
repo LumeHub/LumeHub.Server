@@ -158,7 +158,7 @@
 
             networking.firewall = mkIf cfg.openFirewall {
                 allowedTCPPorts = [cfg.settings.server.port];
-                allowedUDPPorts = lib.optional cfg.settings.mdns.enable [cfg.settings.mdns.port];
+                allowedUDPPorts = lib.optional cfg.settings.mdns.enable cfg.settings.mdns.port;
             };
         };
     };
