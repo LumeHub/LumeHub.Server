@@ -8,8 +8,12 @@ domain       = { workspace = true }
 application  = { workspace = true }
 engine       = { workspace = true }
 effects      = { workspace = true }
+store        = { workspace = true }
 actix-web    = { workspace = true }
 serde        = { workspace = true }
 serde_json   = { workspace = true }
 tokio        = { workspace = true }
 futures-util = { workspace = true }
+
+[dev-dependencies]
+sqlx = { workspace = true }
