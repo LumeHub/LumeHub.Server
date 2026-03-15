@@ -163,6 +163,10 @@ impl Store {
         scene::reorder_layers(&self.pool, scene_id, ordered_ids).await
     }
 
+    pub async fn get_layer_by_id(&self, id: &str) -> Result<LayerRecord, StoreError> {
+        scene::get_layer(&self.pool, id).await
+    }
+
     pub async fn get_active_layers(&self) -> Result<Vec<LayerRecord>, StoreError> {
         scene::get_layers(&self.pool, ACTIVE_SCENE_ID).await
     }

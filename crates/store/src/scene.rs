@@ -249,26 +249,9 @@ pub async fn clear_layers(pool: &SqlitePool, scene_id: &str) -> Result<(), Store
 }
 
 pub async fn load_into_active(pool: &SqlitePool, scene_id: &str) -> Result<(), StoreError> {
-    let layers = get_layers(pool, scene_id).await?;
+    get_one(pool, scene_id).await?;
     clear_layers(pool, ACTIVE_SCENE_ID).await?;
-    for layer in layers {
-        let params_json = serde_json::to_string(&layer.params)?;
-        let id = Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position)
-             VALUES (?, '__active__', ?, ?, ?, ?, ?, ?)",
-        )
-        .bind(&id)
-        .bind(&layer.effect_id)
-        .bind(&layer.zone_id)
-        .bind(blend_mode_to_str(layer.blend_mode))
-        .bind(&params_json)
-        .bind(layer.enabled as i64)
-        .bind(layer.position as i64)
-        .execute(pool)
-        .await?;
-    }
-    Ok(())
+    copy_layers(pool, scene_id, ACTIVE_SCENE_ID).await
 }
 
 pub async fn save_active_as(pool: &SqlitePool, name: &str) -> Result<SceneRecord, StoreError> {
@@ -313,7 +296,7 @@ async fn copy_layers(
     Ok(())
 }
 
-async fn get_layer(pool: &SqlitePool, id: &str) -> Result<LayerRecord, StoreError> {
+pub async fn get_layer(pool: &SqlitePool, id: &str) -> Result<LayerRecord, StoreError> {
     let row: Option<LayerRow> = sqlx::query_as::<_, LayerRow>(
         "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position
          FROM scene_layers WHERE id = ?",
