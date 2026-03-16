@@ -41,6 +41,34 @@ struct AddLayerRequest {
     params: HashMap<String, ParamValue>,
 }
 
+#[put("/scenes/active")]
+pub async fn set_active_scene(
+    store: web::Data<Arc<Store>>,
+    runtime: web::Data<dyn SceneRuntime>,
+    body: web::Json<Vec<AddLayerRequest>>,
+) -> Result<impl Responder, ApiError> {
+    store.clear_active_scene().await?;
+    for layer in body.iter() {
+        store
+            .add_layer(
+                ACTIVE_SCENE_ID,
+                &layer.effect_id,
+                &layer.zone_id,
+                layer.blend_mode,
+                &layer.params,
+            )
+            .await?;
+    }
+    runtime.reload_active();
+    let layers = store.get_active_layers().await?;
+    Ok(HttpResponse::Ok().json(
+        layers
+            .into_iter()
+            .map(LayerResponse::from)
+            .collect::<Vec<_>>(),
+    ))
+}
+
 #[post("/scenes/active/layers")]
 pub async fn add_layer(
     store: web::Data<Arc<Store>>,
