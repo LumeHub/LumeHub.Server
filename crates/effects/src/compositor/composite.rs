@@ -14,7 +14,7 @@ pub struct CompositeEffect {
 impl Effect for CompositeEffect {
     fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static> {
         let strip_len = pixels.len();
-        let layers = self.layers.clone();
+        let layers = cull_layers(&self.layers, strip_len);
         let brightness = Arc::clone(&self.brightness);
 
         Box::new(std::iter::from_fn(move || {
@@ -29,6 +29,22 @@ impl Effect for CompositeEffect {
             Some(frame.into_iter().map(|c| c.with_brightness(b)).collect())
         }))
     }
+}
+
+fn cull_layers(layers: &[CompositeLayer], strip_len: usize) -> Vec<CompositeLayer> {
+    let first_visible = layers
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, l)| {
+            l.mode == BlendMode::Override
+                && l.zone.start_pixel == 0
+                && l.zone.end_pixel >= strip_len
+                && l.zone.transition_length == 0
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+    layers[first_visible..].to_vec()
 }
 
 fn blend_layer(base: Vec<Rgb>, overlay: &[Rgb], mode: BlendMode, zone: &ZoneGradient) -> Vec<Rgb> {

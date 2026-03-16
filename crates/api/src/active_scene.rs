@@ -181,6 +181,7 @@ pub async fn overwrite_scene_from_active(
 
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(get_active_scene)
+        .service(set_active_scene)
         .service(clear_active_scene)
         .service(add_layer)
         .service(reorder_layers)
