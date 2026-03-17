@@ -1,8 +1,0 @@
-[[layers]]
-effect     = "script"
-fade_start = 35.0
-fade_end   = 50.0
-code       = """
-let opacity = smoothstep(fade_start, fade_end, pixel.to_float());
-rgb_f(pr * opacity, pg * opacity, pb * opacity)
-"""

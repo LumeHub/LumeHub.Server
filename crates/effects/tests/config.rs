@@ -1,66 +1,52 @@
-use effects::config::EffectsConfig;
-use effects::validate_scripts;
-use std::path::PathBuf;
+use effects::{load_builtins, validate_builtin_scripts};
 
 #[test]
-fn embedded_presets_are_loaded() {
-    let dir = PathBuf::from("/nonexistent");
-    let config = EffectsConfig::from_dir(&dir);
+fn load_builtins_returns_nonempty_list() {
+    let builtins = load_builtins();
     assert!(
-        !config.presets.is_empty(),
-        "embedded presets should be non-empty"
+        !builtins.is_empty(),
+        "expected at least one built-in effect"
     );
 }
 
 #[test]
-fn known_stock_preset_is_present() {
-    let config = EffectsConfig::from_dir(&PathBuf::from("/nonexistent"));
+fn rainbow_builtin_is_present() {
+    let builtins = load_builtins();
     assert!(
-        config.presets.contains_key("rainbow"),
-        "rainbow preset should be present"
+        builtins.iter().any(|b| b.slug == "rainbow"),
+        "rainbow builtin should be present"
     );
 }
 
 #[test]
-fn validate_scripts_passes_for_all_stock_presets() {
-    let config = EffectsConfig::from_dir(&PathBuf::from("/nonexistent"));
-    let errors = validate_scripts(&config, "");
+fn builtin_ids_have_builtin_prefix() {
+    for b in load_builtins() {
+        assert!(
+            b.id().starts_with("builtin:"),
+            "expected id to start with 'builtin:', got '{}'",
+            b.id()
+        );
+    }
+}
+
+#[test]
+fn validate_builtin_scripts_passes_for_all_stock_effects() {
+    let errors = validate_builtin_scripts();
     assert!(
         errors.is_empty(),
-        "stock presets have script errors: {:?}",
+        "stock builtin scripts have errors: {:?}",
         errors
     );
 }
 
 #[test]
-fn validate_scripts_catches_broken_rhai() {
-    let dir = tempfile::tempdir().unwrap();
-    let effects_dir = dir.path().join("effects");
-    std::fs::create_dir_all(&effects_dir).unwrap();
-    std::fs::write(
-        effects_dir.join("broken.rhai"),
-        "this is @@@ not valid rhai",
-    )
-    .unwrap();
-
-    let config = EffectsConfig::from_dir(dir.path());
-    let errors = validate_scripts(&config, "");
-    assert!(
-        errors.iter().any(|e| e.contains("broken")),
-        "expected an error for broken preset, got: {:?}",
-        errors
-    );
-}
-
-#[test]
-fn fs_presets_override_embedded_with_same_name() {
-    let dir = tempfile::tempdir().unwrap();
-    let effects_dir = dir.path().join("effects");
-    std::fs::create_dir_all(&effects_dir).unwrap();
-    std::fs::write(effects_dir.join("rainbow.rhai"), "rgb(0, 0, 0)").unwrap();
-
-    let config = EffectsConfig::from_dir(dir.path());
-    let preset = config.presets.get("rainbow").unwrap();
-    // The fs preset replaced the embedded one (single script layer, code matches)
-    assert_eq!(preset.layers.len(), 1);
+fn all_builtins_have_nonempty_name_and_script() {
+    for b in load_builtins() {
+        assert!(!b.name.is_empty(), "builtin '{}' has empty name", b.slug);
+        assert!(
+            !b.script.is_empty(),
+            "builtin '{}' has empty script",
+            b.slug
+        );
+    }
 }

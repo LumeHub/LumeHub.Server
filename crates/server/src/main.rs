@@ -5,9 +5,10 @@ use std::sync::Arc;
 
 use actix_web::{App, HttpServer, web};
 use application::{SceneRuntime, StateEventBus};
-use effects::config::EffectsConfig;
+use effects::load_builtins;
 use engine::EffectQueue;
 use settings::Settings;
+use store::Store;
 
 use scene_runtime::RenderTaskRuntime;
 
@@ -28,15 +29,28 @@ async fn main() -> std::io::Result<()> {
         }
     };
 
+    let strip_len = app_settings.led_controller.driver.pixel_count;
+
     let (effect_queue, rx_effect_processor) =
         EffectQueue::new(app_settings.led_controller.crossfade_ms);
-    let effect_registry = effects::build_registry();
 
     let state_file = app_settings.state_dir.join("state.json");
     let initial_state = persistence::load(&state_file).unwrap_or_else(|e| {
         eprintln!("warning: failed to load state: {}", e);
         persistence::PersistedState::default()
     });
+
+    let db_path = app_settings.state_dir.join("lumehub.db");
+    let store = Arc::new(Store::open(&db_path).await.unwrap_or_else(|e| {
+        eprintln!("error: failed to open database: {}", e);
+        std::process::exit(1);
+    }));
+
+    let builtins = load_builtins();
+    for e in effects::validate_builtin_scripts() {
+        eprintln!("warning: {}", e);
+    }
+    let builtins_data = web::Data::new(builtins.clone());
 
     let (state_tx, mut state_rx) = tokio::sync::watch::channel(initial_state.clone());
     tokio::spawn(async move {
@@ -59,7 +73,13 @@ async fn main() -> std::io::Result<()> {
         event_bus.clone(),
         initial_state,
         Some(state_tx),
+        Arc::clone(&store),
+        builtins,
+        strip_len,
     ));
+
+    // Restore active scene from __active__ on startup
+    runtime.reload_active();
 
     #[cfg(feature = "google")]
     let command_dispatcher = api_google::commands::CommandDispatcher::new();
@@ -82,22 +102,20 @@ async fn main() -> std::io::Result<()> {
             .ok()
     });
 
-    let effects_config = EffectsConfig::from_dir(&app_settings.config_dir);
-    let prelude = effects::builder::build_prelude(&effects_config.functions);
-    for e in effects::validate_scripts(&effects_config, &prelude) {
-        eprintln!("warning: script error in {}", e);
-    }
-
     HttpServer::new(move || {
         let app = App::new()
             .app_data(web::Data::new(effect_queue.clone()))
-            .app_data(web::Data::new(effect_registry.clone()))
-            .app_data(web::Data::new(effects_config.clone()))
+            .app_data(web::Data::new(store.clone()))
+            .app_data(builtins_data.clone())
             .app_data(web::Data::from(Arc::clone(&runtime)))
             .app_data(web::Data::new(event_bus.clone()))
             .configure(api::device::config)
             .configure(api::effects::config)
             .configure(api::events::config)
+            .configure(api::zones::config)
+            // active_scene must precede scenes: /scenes/active must match before /scenes/{id}
+            .configure(api::active_scene::config)
+            .configure(api::scenes::config)
             .configure(api_legacy::config);
 
         #[cfg(feature = "google")]

@@ -3,71 +3,116 @@ use std::sync::Arc;
 use domain::{BlendMode, Rgb};
 use engine::Effect;
 
-use super::bus::ParameterBus;
-use super::layer::{CompositeLayer, OpacityGradient};
+use super::layer::{CompositeLayer, ZoneGradient};
+use super::live_param::LiveParam;
 
 pub struct CompositeEffect {
     pub layers: Vec<CompositeLayer>,
-    pub bus: Arc<ParameterBus>,
+    pub brightness: Arc<LiveParam<f32>>,
+    pub primary_color: Arc<LiveParam<Rgb>>,
 }
 
 impl Effect for CompositeEffect {
     fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static> {
-        let len = pixels.len();
-        let layers = self.layers.clone();
-        let bus = Arc::clone(&self.bus);
+        let strip_len = pixels.len();
+        let layers = cull_layers(&self.layers, strip_len);
+        let brightness = Arc::clone(&self.brightness);
+        let primary_color = Arc::clone(&self.primary_color);
 
         Box::new(std::iter::from_fn(move || {
-            bus.tick();
-            let frame = layers.iter().fold(vec![Rgb::BLACK; len], |base, layer| {
-                blend_layer(
-                    base,
-                    &layer.effect.render(len),
-                    layer.mode,
-                    layer.opacity_gradient,
-                )
-            });
-            let brightness = bus.brightness.get() as u8;
-            Some(
-                frame
-                    .into_iter()
-                    .map(|c| c.with_brightness(brightness))
-                    .collect(),
-            )
+            brightness.tick();
+            primary_color.tick();
+            let frame = layers
+                .iter()
+                .fold(vec![Rgb::BLACK; strip_len], |base, layer| {
+                    let overlay = layer.effect.render(layer.zone.zone_len());
+                    blend_layer(base, &overlay, layer.mode, &layer.zone)
+                });
+            let b = brightness.get() as u8;
+            Some(frame.into_iter().map(|c| c.with_brightness(b)).collect())
         }))
     }
 }
 
-fn blend_layer(
-    base: Vec<Rgb>,
-    overlay: &[Rgb],
-    mode: BlendMode,
-    gradient: Option<OpacityGradient>,
-) -> Vec<Rgb> {
-    base.into_iter()
-        .zip(overlay)
+fn cull_layers(layers: &[CompositeLayer], strip_len: usize) -> Vec<CompositeLayer> {
+    let first_visible = layers
+        .iter()
         .enumerate()
-        .map(|(i, (b, &o))| blend_pixel(b, o, mode, gradient.map_or(1.0, |g| pixel_opacity(g, i))))
+        .rev()
+        .find(|(_, l)| {
+            l.mode == BlendMode::Override
+                && l.zone.start_pixel == 0
+                && l.zone.end_pixel >= strip_len
+                && l.zone.transition_length == 0
+        })
+        .map(|(i, _)| i)
+        .unwrap_or(0);
+    layers[first_visible..].to_vec()
+}
+
+fn blend_layer(base: Vec<Rgb>, overlay: &[Rgb], mode: BlendMode, zone: &ZoneGradient) -> Vec<Rgb> {
+    if overlay.is_empty() {
+        return base;
+    }
+    let strip_len = base.len();
+    let (rstart, rend) = (
+        zone.render_start().min(strip_len),
+        zone.render_end(strip_len),
+    );
+    base.into_iter()
+        .enumerate()
+        .map(
+            |(strip_px, base_px)| match strip_px < rstart || strip_px >= rend {
+                true => base_px,
+                false => {
+                    let idx = strip_px
+                        .saturating_sub(zone.start_pixel)
+                        .min(overlay.len() - 1);
+                    blend_pixel(
+                        base_px,
+                        overlay[idx],
+                        mode,
+                        pixel_opacity(zone, strip_px, strip_len),
+                    )
+                }
+            },
+        )
         .collect()
 }
 
 fn blend_pixel(base: Rgb, overlay: Rgb, mode: BlendMode, opacity: f32) -> Rgb {
+    let o = overlay.dim(opacity);
     match mode {
-        BlendMode::Override => base.lerp(overlay, opacity),
-        BlendMode::Add => Rgb {
-            r: base.r.saturating_add((overlay.r as f32 * opacity) as u8),
-            g: base.g.saturating_add((overlay.g as f32 * opacity) as u8),
-            b: base.b.saturating_add((overlay.b as f32 * opacity) as u8),
+        BlendMode::Override => base.lerp(o, opacity),
+        BlendMode::Add => base + o,
+        BlendMode::Screen => Rgb {
+            r: 255 - ((255 - base.r as u16) * (255 - o.r as u16) / 255) as u8,
+            g: 255 - ((255 - base.g as u16) * (255 - o.g as u16) / 255) as u8,
+            b: 255 - ((255 - base.b as u16) * (255 - o.b as u16) / 255) as u8,
+        },
+        BlendMode::Multiply => Rgb {
+            r: (base.r as u16 * o.r as u16 / 255) as u8,
+            g: (base.g as u16 * o.g as u16 / 255) as u8,
+            b: (base.b as u16 * o.b as u16 / 255) as u8,
         },
     }
 }
 
-fn pixel_opacity(gradient: OpacityGradient, i: usize) -> f32 {
-    if i < gradient.start_pixel {
-        return 0.0;
-    }
-    if gradient.end_pixel <= gradient.start_pixel || i >= gradient.end_pixel {
+fn pixel_opacity(zone: &ZoneGradient, strip_px: usize, strip_len: usize) -> f32 {
+    let tl = zone.transition_length;
+    if tl == 0 {
         return 1.0;
     }
-    (i - gradient.start_pixel) as f32 / (gradient.end_pixel - gradient.start_pixel) as f32
+    let render_start = zone.start_pixel.saturating_sub(tl);
+    let render_end = (zone.end_pixel + tl).min(strip_len);
+
+    let fade_in = match render_start == zone.start_pixel || strip_px >= zone.start_pixel {
+        true => 1.0,
+        false => (strip_px - render_start) as f32 / (zone.start_pixel - render_start) as f32,
+    };
+    let fade_out = match render_end == zone.end_pixel || strip_px < zone.end_pixel {
+        true => 1.0,
+        false => (render_end - strip_px) as f32 / (render_end - zone.end_pixel) as f32,
+    };
+    fade_in.min(fade_out)
 }

@@ -1,153 +1,129 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use actix_web::{HttpResponse, Responder, delete, get, post, put, web};
+use domain::ParamDef;
+use effects::BuiltinEffect;
 use serde::{Deserialize, Serialize};
+use store::{EffectRecord, Store};
 
-use application::{BusProxy, SceneRuntime, SignalError, SignalValue};
-use domain::Rgb;
-use effects::EffectError;
-use effects::builder::{InitialState, build_composite, build_prelude};
-use effects::config::EffectsConfig;
-use effects::preset::EffectPreset;
-use effects::registry::EffectRegistry;
-use engine::EffectQueue;
+use crate::error::ApiError;
 
 #[derive(Serialize)]
-struct PresetsResponse<'a> {
-    presets: &'a HashMap<String, EffectPreset>,
+struct EffectResponse {
+    id: String,
+    name: String,
+    script: String,
+    params: Vec<ParamDef>,
+    builtin: bool,
 }
 
-#[post("/effects/presets/{name}/execute")]
-pub async fn execute_preset(
-    effect_queue: web::Data<EffectQueue>,
-    registry: web::Data<EffectRegistry>,
-    runtime: web::Data<dyn SceneRuntime>,
-    effects: web::Data<EffectsConfig>,
-    path: web::Path<String>,
-) -> impl Responder {
-    let preset_name = path.into_inner();
-    let preset = match effects.presets.get(&preset_name) {
-        Some(p) => p.clone(),
-        None => return HttpResponse::NotFound().body("unknown preset"),
-    };
-
-    let snap = runtime.snapshot();
-    let overrides = runtime.signal_overrides();
-    let state = InitialState {
-        color: snap.color,
-        brightness: if snap.on { snap.brightness } else { 0 },
-        brightness_speed: effect_queue.brightness_speed(),
-        signal_colors: overrides.colors,
-    };
-    let signal_scripts = overrides.scripts;
-
-    let prelude = build_prelude(&effects.functions);
-    let (composite, bus) =
-        match build_composite(&registry, &preset, &state, prelude, &effects.presets) {
-            Ok(result) => result,
-            Err(e) => {
-                eprintln!("error: preset '{}' failed to build: {}", preset_name, e);
-                return match e {
-                    EffectError::UnknownEffect(name) => HttpResponse::InternalServerError()
-                        .body(format!("unknown effect type '{}' in preset config", name)),
-                    EffectError::NestingTooDeep(max) => HttpResponse::InternalServerError()
-                        .body(format!("preset nesting too deep (max {})", max)),
-                    EffectError::ScriptCompile(ref err) => HttpResponse::InternalServerError()
-                        .body(format!("script compile error in preset: {}", err)),
-                    EffectError::InvalidParams {
-                        ref effect,
-                        ref source,
-                    } => HttpResponse::InternalServerError()
-                        .body(format!("invalid params for '{}': {}", effect, source)),
-                    EffectError::LayerBuild {
-                        ref effect,
-                        ref source,
-                    } => HttpResponse::InternalServerError()
-                        .body(format!("layer '{}': {}", effect, source)),
-                    EffectError::SignalScript {
-                        ref signal,
-                        ref source,
-                    } => HttpResponse::InternalServerError()
-                        .body(format!("signal '{}': {}", signal, source)),
-                };
-            }
-        };
-
-    // Apply user animated overrides — these beat preset animations.
-    for (name, code) in &signal_scripts {
-        if let Err(e) = bus.set_animated(name, code) {
-            eprintln!("warning: signal override '{}' script error: {}", name, e);
+impl From<EffectRecord> for EffectResponse {
+    fn from(r: EffectRecord) -> Self {
+        Self {
+            id: r.id,
+            name: r.name,
+            script: r.script,
+            params: r.params,
+            builtin: false,
         }
     }
-    // Apply user static overrides — these beat everything (incl. animations).
-    for (name, &color) in &state.signal_colors {
-        bus.set_color(name, color);
+}
+
+impl From<&BuiltinEffect> for EffectResponse {
+    fn from(b: &BuiltinEffect) -> Self {
+        Self {
+            id: b.id(),
+            name: b.name.clone(),
+            script: b.script.clone(),
+            params: b.params.clone(),
+            builtin: true,
+        }
     }
-
-    runtime.attach_bus(Arc::clone(&bus) as Arc<dyn BusProxy>, preset_name);
-    effect_queue.enqueue(Box::new(composite));
-    HttpResponse::Ok().finish()
 }
 
-#[get("/effects/presets")]
-pub async fn list_presets(effects: web::Data<EffectsConfig>) -> impl Responder {
-    HttpResponse::Ok().json(PresetsResponse {
-        presets: &effects.presets,
-    })
-}
-
-#[delete("/effects/active")]
-pub async fn delete_active(runtime: web::Data<dyn SceneRuntime>) -> impl Responder {
-    runtime.halt();
-    HttpResponse::NoContent().finish()
-}
-
-#[get("/effects/signals")]
-pub async fn get_signals(runtime: web::Data<dyn SceneRuntime>) -> impl Responder {
-    HttpResponse::Ok().json(runtime.bus_colors())
+#[get("/effects")]
+pub async fn list_effects(
+    store: web::Data<Arc<Store>>,
+    builtins: web::Data<Vec<BuiltinEffect>>,
+) -> Result<impl Responder, ApiError> {
+    let user_effects = store.get_effects().await?;
+    let mut effects: Vec<EffectResponse> = builtins.iter().map(EffectResponse::from).collect();
+    effects.extend(user_effects.into_iter().map(EffectResponse::from));
+    Ok(HttpResponse::Ok().json(effects))
 }
 
 #[derive(Deserialize)]
-#[serde(untagged)]
-enum SetSignalRequest {
-    Color { r: u8, g: u8, b: u8 },
-    Script { code: String },
+struct EffectBody {
+    name: String,
+    script: String,
+    #[serde(default)]
+    params: Vec<ParamDef>,
 }
 
-#[put("/effects/signals/{name}")]
-pub async fn set_signal(
-    runtime: web::Data<dyn SceneRuntime>,
+#[post("/effects")]
+pub async fn create_effect(
+    store: web::Data<Arc<Store>>,
+    body: web::Json<EffectBody>,
+) -> Result<impl Responder, ApiError> {
+    let record = store
+        .create_effect(&body.name, &body.script, &body.params)
+        .await?;
+    Ok(HttpResponse::Created().json(EffectResponse::from(record)))
+}
+
+#[get("/effects/{id}")]
+pub async fn get_effect(
+    store: web::Data<Arc<Store>>,
+    builtins: web::Data<Vec<BuiltinEffect>>,
     path: web::Path<String>,
-    body: web::Bytes,
-) -> impl Responder {
-    let req: SetSignalRequest = match serde_json::from_slice(&body) {
-        Ok(r) => r,
-        Err(e) => return HttpResponse::BadRequest().body(e.to_string()),
-    };
-    let signal_name = path.into_inner();
-
-    let result = match req {
-        SetSignalRequest::Color { r, g, b } => {
-            runtime.set_signal(&signal_name, SignalValue::Color(Rgb { r, g, b }))
-        }
-        SetSignalRequest::Script { code } => {
-            runtime.set_signal(&signal_name, SignalValue::Script(code))
-        }
-    };
-
-    match result {
-        Ok(()) => HttpResponse::Ok().finish(),
-        Err(SignalError::ScriptCompile(msg)) => {
-            HttpResponse::BadRequest().body(format!("script compile error: {}", msg))
-        }
+) -> Result<impl Responder, ApiError> {
+    let id = path.into_inner();
+    if let Some(b) = find_builtin(&builtins, &id) {
+        return Ok(HttpResponse::Ok().json(EffectResponse::from(b)));
     }
+    let record = store.get_effect(&id).await?;
+    Ok(HttpResponse::Ok().json(EffectResponse::from(record)))
+}
+
+#[put("/effects/{id}")]
+pub async fn update_effect(
+    store: web::Data<Arc<Store>>,
+    builtins: web::Data<Vec<BuiltinEffect>>,
+    path: web::Path<String>,
+    body: web::Json<EffectBody>,
+) -> Result<impl Responder, ApiError> {
+    let id = path.into_inner();
+    if find_builtin(&builtins, &id).is_some() {
+        return Err(ApiError::Forbidden("cannot modify a built-in effect"));
+    }
+    let record = store
+        .update_effect(&id, &body.name, &body.script, &body.params)
+        .await?;
+    Ok(HttpResponse::Ok().json(EffectResponse::from(record)))
+}
+
+#[delete("/effects/{id}")]
+pub async fn delete_effect(
+    store: web::Data<Arc<Store>>,
+    builtins: web::Data<Vec<BuiltinEffect>>,
+    path: web::Path<String>,
+) -> Result<impl Responder, ApiError> {
+    let id = path.into_inner();
+    if find_builtin(&builtins, &id).is_some() {
+        return Err(ApiError::Forbidden("cannot delete a built-in effect"));
+    }
+    store.delete_effect(&id).await?;
+    Ok(HttpResponse::NoContent().finish())
+}
+
+fn find_builtin<'a>(builtins: &'a [BuiltinEffect], id: &str) -> Option<&'a BuiltinEffect> {
+    builtins.iter().find(|b| b.id() == id)
 }
 
 pub fn config(cfg: &mut web::ServiceConfig) {
-    cfg.service(execute_preset)
-        .service(list_presets)
-        .service(delete_active)
-        .service(get_signals)
-        .service(set_signal);
+    cfg.service(list_effects)
+        .service(create_effect)
+        .service(get_effect)
+        .service(update_effect)
+        .service(delete_effect);
 }

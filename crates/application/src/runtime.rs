@@ -1,9 +1,6 @@
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use domain::Rgb;
 
-use crate::{BusProxy, SceneSnapshot, SignalError, SignalOverrides, SignalValue};
+use crate::SceneSnapshot;
 
 pub trait SceneRuntime: Send + Sync {
     fn set_color(&self, color: Rgb);
@@ -14,9 +11,6 @@ pub trait SceneRuntime: Send + Sync {
     fn start_color_loop(&self, _duration: u64) {}
     fn start_sleep(&self, _duration: u64) {}
     fn start_wake(&self, _duration: u64) {}
-    fn set_signal(&self, name: &str, value: SignalValue) -> Result<(), SignalError>;
-    fn attach_bus(&self, bus: Arc<dyn BusProxy>, effect_name: String);
+    fn reload_active(&self);
     fn snapshot(&self) -> SceneSnapshot;
-    fn bus_colors(&self) -> HashMap<String, Rgb>;
-    fn signal_overrides(&self) -> SignalOverrides;
 }

@@ -1,11 +1,14 @@
+pub mod builtin;
 pub(crate) mod compositor;
 pub mod error;
-pub mod preset;
 pub(crate) mod rhai;
+pub mod scene_builder;
 
-pub use compositor::{builder, bus, composite, layer, live_param, registry};
+pub use builtin::{BuiltinEffect, load_builtins};
+pub use compositor::live_param::LiveParam;
+pub use compositor::{composite, layer, live_param, registry};
 pub use error::EffectError;
-pub use preset::config;
+pub use scene_builder::build_composite;
 
 pub fn build_registry() -> registry::EffectRegistry {
     let mut registry = registry::EffectRegistry::default();
@@ -13,21 +16,12 @@ pub fn build_registry() -> registry::EffectRegistry {
     registry
 }
 
-pub fn validate_scripts(config: &config::EffectsConfig, prelude: &str) -> Vec<String> {
+pub fn validate_builtin_scripts() -> Vec<String> {
     let engine = rhai::make_script_engine();
     let mut errors = Vec::new();
-    for (preset_name, preset) in &config.presets {
-        for (i, layer) in preset.layers.iter().enumerate() {
-            if layer.effect != "script" {
-                continue;
-            }
-            let Some(code) = layer.params.get("code").and_then(|v| v.as_str()) else {
-                continue;
-            };
-            let full_code = format!("{prelude}\n{code}");
-            if let Err(e) = engine.compile(&full_code) {
-                errors.push(format!("preset '{}' layer {}: {}", preset_name, i, e));
-            }
+    for effect in load_builtins() {
+        if let Err(e) = engine.compile(&effect.script) {
+            errors.push(format!("builtin '{}': {}", effect.slug, e));
         }
     }
     errors

@@ -1,11 +1,70 @@
-[[layers]]
-effect = "script"
-speed1 = 0.3
-speed2 = 0.7
-w1     = 5.0
-w2     = 4.0
-code   = """
+name = "Dual Scan"
+
+[[params]]
+name = "color1"
+label = "Color 1"
+[params.control]
+type = "color"
+[params.default]
+type = "color"
+value = {r = 255, g = 255, b = 255}
+
+[[params]]
+name = "color2"
+label = "Color 2"
+[params.control]
+type = "color"
+[params.default]
+type = "color"
+value = {r = 0, g = 100, b = 255}
+
+[[params]]
+name = "speed1"
+label = "Speed 1"
+[params.control]
+type = "slider"
+min = 0.1
+max = 2.0
+[params.default]
+type = "number"
+value = 0.3
+
+[[params]]
+name = "speed2"
+label = "Speed 2"
+[params.control]
+type = "slider"
+min = 0.1
+max = 2.0
+[params.default]
+type = "number"
+value = 0.7
+
+[[params]]
+name = "w1"
+label = "Width 1"
+[params.control]
+type = "slider"
+min = 2.0
+max = 20.0
+[params.default]
+type = "number"
+value = 5.0
+
+[[params]]
+name = "w2"
+label = "Width 2"
+[params.control]
+type = "slider"
+min = 2.0
+max = 20.0
+[params.default]
+type = "number"
+value = 4.0
+
+[script]
+code = """
 let b1 = scanner_factor(pixel, len, time, speed1, w1);
 let b2 = scanner_factor(pixel, len, time, speed2, w2);
-add_colors(dim(primary_color, b1), dim(secondary_color, b2))
+add_colors(dim(color1, b1), dim(color2, b2))
 """

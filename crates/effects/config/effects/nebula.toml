@@ -1,7 +1,7 @@
-# Cosmic nebula — aurora pattern shifted into deep purples, magentas and blues.
-[[layers]]
-effect = "script"
-code   = """
+name = "Nebula"
+
+[script]
+code = """
 let p  = pixel.to_float();
 let w1 = wave(p * 0.07  + time * 0.016);
 let w2 = wave(p * 0.04  - time * 0.010 + 2.3);

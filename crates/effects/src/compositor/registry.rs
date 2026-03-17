@@ -3,12 +3,10 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use super::bus::ParameterBus;
 use super::layer::LayerEffect;
 use crate::error::EffectError;
 
-pub type LayerBuilder =
-    fn(Value, Arc<ParameterBus>, &str) -> Result<Arc<dyn LayerEffect>, EffectError>;
+pub type LayerBuilder = fn(Value, usize, usize) -> Result<Arc<dyn LayerEffect>, EffectError>;
 
 #[derive(Clone, Default)]
 pub struct EffectRegistry {
@@ -24,13 +22,13 @@ impl EffectRegistry {
         &self,
         name: &str,
         params: Value,
-        bus: Arc<ParameterBus>,
-        prelude: &str,
+        strip_len: usize,
+        zone_start: usize,
     ) -> Result<Arc<dyn LayerEffect>, EffectError> {
         let builder = self
             .layer_builders
             .get(name)
             .ok_or_else(|| EffectError::UnknownEffect(name.to_string()))?;
-        builder(params, bus, prelude)
+        builder(params, strip_len, zone_start)
     }
 }

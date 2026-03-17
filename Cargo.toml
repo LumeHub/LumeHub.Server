@@ -10,6 +10,7 @@ members = [
     "crates/api/legacy",
     "crates/discovery",
     "crates/persistence",
+    "crates/store",
     "crates/server",
 ]
 resolver = "2"
@@ -26,6 +27,7 @@ api-google  = { path = "crates/api/google" }
 api-legacy  = { path = "crates/api/legacy" }
 discovery   = { path = "crates/discovery" }
 persistence = { path = "crates/persistence" }
+store       = { path = "crates/store" }
 
 # External crates
 actix-web    = "4.11.0"
@@ -43,3 +45,17 @@ thiserror    = "2"
 mdns-sd      = "0.18"
 tokio        = { version = "1", features = ["sync", "fs"] }
 futures-util = "0.3"
+sqlx         = { version = "0.8", features = ["sqlite", "runtime-tokio-rustls", "migrate"] }
+toml         = "0.8"
+uuid         = { version = "1", features = ["v4"] }
+
+# Optimize render-critical crates even in debug builds — Rhai per-pixel eval
+# is too slow at opt-level=0 for real-time frame rates.
+[profile.dev.package.rhai]
+opt-level = 3
+[profile.dev.package.effects]
+opt-level = 3
+[profile.dev.package.engine]
+opt-level = 3
+[profile.dev.package.domain]
+opt-level = 3

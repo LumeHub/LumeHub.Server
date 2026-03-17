@@ -2,63 +2,42 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use rhai::{AST, Engine, Scope};
-use serde::Deserialize;
-use serde_json::Value;
+use rhai::{AST, Dynamic, Engine, ImmutableString, Scope};
+
+use domain::{ParamDef, ParamValue, Rgb};
 
 use super::{make_script_engine, parse_color};
-use crate::compositor::bus::{PRIMARY_COLOR, ParameterBus, SECONDARY_COLOR};
 use crate::compositor::layer::LayerEffect;
+use crate::compositor::live_param::LiveParam;
 use crate::compositor::registry::EffectRegistry;
 use crate::error::EffectError;
-use domain::Rgb;
 
-#[derive(Deserialize)]
-struct ScriptParams {
-    code: String,
-    #[serde(flatten)]
-    vars: HashMap<String, Value>,
-}
-
-pub struct Script {
+pub struct ScriptLayer {
     engine: Engine,
     ast: AST,
-    bus: Arc<ParameterBus>,
-    extra_vars: Vec<(String, f64)>,
     frame: AtomicU64,
+    params: Vec<(ImmutableString, Dynamic)>,
+    primary_color: Arc<LiveParam<Rgb>>,
+    strip_len: usize,
+    zone_start: usize,
 }
 
-impl LayerEffect for Script {
+impl LayerEffect for ScriptLayer {
     fn render(&self, len: usize) -> Vec<Rgb> {
         let frame = self.frame.fetch_add(1, Ordering::Relaxed);
 
         let mut scope = Scope::new();
         scope.push("len", len as i64);
+        scope.push("strip_len", self.strip_len as i64);
+        scope.push("zone_start", self.zone_start as i64);
         scope.push("time", frame as f64);
         scope.push("frame", frame as i64);
         scope.push("pi", std::f64::consts::PI);
 
-        let colors = self.bus.all_colors();
-        for (name, color) in &colors {
-            scope.push(name.clone(), *color);
+        for (name, val) in &self.params {
+            scope.push_dynamic(name.as_str(), val.clone());
         }
-
-        let primary = colors
-            .get(PRIMARY_COLOR)
-            .copied()
-            .unwrap_or(Rgb::new(255, 255, 255));
-        let secondary = colors.get(SECONDARY_COLOR).copied().unwrap_or(Rgb::BLACK);
-        let to_f = |c: u8| c as f64 / 255.0;
-        scope.push("pr", to_f(primary.r));
-        scope.push("pg", to_f(primary.g));
-        scope.push("pb", to_f(primary.b));
-        scope.push("sr", to_f(secondary.r));
-        scope.push("sg", to_f(secondary.g));
-        scope.push("sb", to_f(secondary.b));
-
-        for (name, val) in &self.extra_vars {
-            scope.push(name.as_str(), *val);
-        }
+        scope.push("primary", self.primary_color.get());
 
         let base_len = scope.len();
         (0..len)
@@ -67,9 +46,14 @@ impl LayerEffect for Script {
                 scope.push("t", i as f64 / (len as f64 - 1.0).max(1.0));
                 let color = self
                     .engine
-                    .eval_ast_with_scope::<rhai::Dynamic>(&mut scope, &self.ast)
+                    .eval_ast_with_scope::<Dynamic>(&mut scope, &self.ast)
                     .map(parse_color)
-                    .unwrap_or(Rgb::BLACK);
+                    .unwrap_or_else(|e| {
+                        if i == 0 {
+                            eprintln!("warning: script eval error: {e}");
+                        }
+                        Rgb::BLACK
+                    });
                 scope.rewind(base_len);
                 color
             })
@@ -77,35 +61,64 @@ impl LayerEffect for Script {
     }
 }
 
-pub fn register(registry: &mut EffectRegistry) {
-    registry.register_layer("script", |params, bus, prelude| {
-        let p: ScriptParams =
-            serde_json::from_value(params).map_err(|e| EffectError::InvalidParams {
-                effect: "script".to_string(),
-                source: e,
-            })?;
+pub fn build_layer(
+    script: &str,
+    param_defs: &[ParamDef],
+    layer_params: &HashMap<String, ParamValue>,
+    primary_color: Arc<LiveParam<Rgb>>,
+    strip_len: usize,
+    zone_start: usize,
+) -> Result<Arc<dyn LayerEffect>, EffectError> {
+    let params: Vec<(ImmutableString, Dynamic)> = param_defs
+        .iter()
+        .map(|def| {
+            let value = layer_params.get(&def.name).unwrap_or(&def.default);
+            (ImmutableString::from(&def.name), param_to_dynamic(value))
+        })
+        .collect();
 
-        let mut extra_vars: Vec<(String, f64)> = p
-            .vars
-            .into_iter()
-            .filter_map(|(k, v)| v.as_f64().map(|f| (k, f)))
-            .collect();
-        if !extra_vars.iter().any(|(k, _)| k == "speed") {
-            extra_vars.push(("speed".to_string(), 1.0));
-        }
+    let engine = make_script_engine();
+    let ast = engine.compile(script).map_err(EffectError::ScriptCompile)?;
+
+    Ok(Arc::new(ScriptLayer {
+        engine,
+        ast,
+        frame: AtomicU64::new(0),
+        params,
+        primary_color,
+        strip_len,
+        zone_start,
+    }))
+}
+
+pub fn register(registry: &mut EffectRegistry) {
+    registry.register_layer("script", |params, strip_len, zone_start| {
+        let code = params
+            .get("code")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
 
         let engine = make_script_engine();
-        let full_code = format!("{prelude}\n{code}", code = p.code);
-        let ast = engine
-            .compile(&full_code)
-            .map_err(EffectError::ScriptCompile)?;
+        let ast = engine.compile(&code).map_err(EffectError::ScriptCompile)?;
 
-        Ok(Arc::new(Script {
+        Ok(Arc::new(ScriptLayer {
             engine,
             ast,
-            bus,
-            extra_vars,
             frame: AtomicU64::new(0),
-        }) as Arc<dyn LayerEffect>)
+            params: Vec::new(),
+            primary_color: Arc::new(LiveParam::new(Rgb::BLACK, 5.0)),
+            strip_len,
+            zone_start,
+        }))
     });
+}
+
+pub fn param_to_dynamic(value: &ParamValue) -> Dynamic {
+    match value {
+        ParamValue::Number(n) => Dynamic::from(*n as f64),
+        ParamValue::Color(rgb) => Dynamic::from(*rgb),
+        ParamValue::Bool(b) => Dynamic::from(*b),
+        ParamValue::Select(s) => Dynamic::from(s.clone()),
+    }
 }
