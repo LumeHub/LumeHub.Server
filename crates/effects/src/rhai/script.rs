@@ -48,7 +48,12 @@ impl LayerEffect for ScriptLayer {
                     .engine
                     .eval_ast_with_scope::<Dynamic>(&mut scope, &self.ast)
                     .map(parse_color)
-                    .unwrap_or(Rgb::BLACK);
+                    .unwrap_or_else(|e| {
+                        if i == 0 {
+                            eprintln!("warning: script eval error: {e}");
+                        }
+                        Rgb::BLACK
+                    });
                 scope.rewind(base_len);
                 color
             })
