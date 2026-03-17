@@ -5,7 +5,7 @@ use actix_web::{HttpResponse, Responder, delete, get, patch, post, put, web};
 use application::SceneRuntime;
 use domain::{BlendMode, ParamValue};
 use serde::Deserialize;
-use store::{ACTIVE_SCENE_ID, Store};
+use store::Store;
 
 use crate::error::ApiError;
 use crate::types::{LayerResponse, SceneResponse};
@@ -50,8 +50,7 @@ pub async fn set_active_scene(
     store.clear_active_scene().await?;
     for layer in body.iter() {
         store
-            .add_layer(
-                ACTIVE_SCENE_ID,
+            .add_active_layer(
                 &layer.effect_id,
                 &layer.zone_id,
                 layer.blend_mode,
@@ -76,8 +75,7 @@ pub async fn add_layer(
     body: web::Json<AddLayerRequest>,
 ) -> Result<impl Responder, ApiError> {
     let layer = store
-        .add_layer(
-            ACTIVE_SCENE_ID,
+        .add_active_layer(
             &body.effect_id,
             &body.zone_id,
             body.blend_mode,
@@ -103,12 +101,12 @@ pub async fn patch_layer(
     body: web::Json<PatchLayerRequest>,
 ) -> Result<impl Responder, ApiError> {
     let id = path.into_inner();
-    let current = store.get_layer_by_id(&id).await?;
+    let current = store.get_active_layer(&id).await?;
     let enabled = body.enabled.unwrap_or(current.enabled);
     let blend_mode = body.blend_mode.unwrap_or(current.blend_mode);
     let params = body.params.clone().unwrap_or(current.params);
     let layer = store
-        .update_layer(&id, enabled, blend_mode, &params)
+        .update_active_layer(&id, enabled, blend_mode, &params)
         .await?;
     runtime.reload_active();
     Ok(HttpResponse::Ok().json(LayerResponse::from(layer)))
@@ -120,7 +118,7 @@ pub async fn remove_layer(
     runtime: web::Data<dyn SceneRuntime>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
-    store.remove_layer(&path.into_inner()).await?;
+    store.remove_active_layer(&path.into_inner()).await?;
     runtime.reload_active();
     Ok(HttpResponse::NoContent().finish())
 }
@@ -136,9 +134,7 @@ pub async fn reorder_layers(
     runtime: web::Data<dyn SceneRuntime>,
     body: web::Json<ReorderRequest>,
 ) -> Result<impl Responder, ApiError> {
-    store
-        .reorder_layers(ACTIVE_SCENE_ID, &body.ordered_ids)
-        .await?;
+    store.reorder_active_layers(&body.ordered_ids).await?;
     runtime.reload_active();
     Ok(HttpResponse::NoContent().finish())
 }

@@ -254,7 +254,13 @@ async fn update_layer() {
         .unwrap();
 
     let updated = store
-        .update_layer(&layer.id, false, BlendMode::Screen, &make_params())
+        .update_layer(
+            &layer.id,
+            &scene.id,
+            false,
+            BlendMode::Screen,
+            &make_params(),
+        )
         .await
         .unwrap();
     assert!(!updated.enabled);
@@ -329,7 +335,7 @@ async fn remove_layer() {
         .await
         .unwrap();
 
-    store.remove_layer(&layer.id).await.unwrap();
+    store.remove_layer(&layer.id, &scene.id).await.unwrap();
     let layers = store.get_layers(&scene.id).await.unwrap();
     assert!(layers.is_empty());
 }

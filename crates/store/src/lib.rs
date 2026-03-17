@@ -146,14 +146,31 @@ impl Store {
     pub async fn update_layer(
         &self,
         id: &str,
+        scene_id: &str,
         enabled: bool,
         blend_mode: domain::BlendMode,
         params: &std::collections::HashMap<String, domain::ParamValue>,
     ) -> Result<LayerRecord, StoreError> {
-        scene::update_layer(&self.pool, id, enabled, blend_mode, params).await
+        scene::update_layer(&self.pool, id, scene_id, enabled, blend_mode, params).await
     }
-    pub async fn remove_layer(&self, id: &str) -> Result<(), StoreError> {
-        scene::remove_layer(&self.pool, id).await
+    pub async fn remove_layer(&self, id: &str, scene_id: &str) -> Result<(), StoreError> {
+        scene::remove_layer(&self.pool, id, scene_id).await
+    }
+
+    pub async fn get_active_layer(&self, id: &str) -> Result<LayerRecord, StoreError> {
+        scene::get_layer_in_scene(&self.pool, id, ACTIVE_SCENE_ID).await
+    }
+    pub async fn update_active_layer(
+        &self,
+        id: &str,
+        enabled: bool,
+        blend_mode: domain::BlendMode,
+        params: &std::collections::HashMap<String, domain::ParamValue>,
+    ) -> Result<LayerRecord, StoreError> {
+        scene::update_layer(&self.pool, id, ACTIVE_SCENE_ID, enabled, blend_mode, params).await
+    }
+    pub async fn remove_active_layer(&self, id: &str) -> Result<(), StoreError> {
+        scene::remove_layer(&self.pool, id, ACTIVE_SCENE_ID).await
     }
     pub async fn reorder_layers(
         &self,
@@ -169,6 +186,26 @@ impl Store {
 
     pub async fn get_active_layers(&self) -> Result<Vec<LayerRecord>, StoreError> {
         scene::get_layers(&self.pool, ACTIVE_SCENE_ID).await
+    }
+    pub async fn add_active_layer(
+        &self,
+        effect_id: &str,
+        zone_id: &str,
+        blend_mode: domain::BlendMode,
+        params: &std::collections::HashMap<String, domain::ParamValue>,
+    ) -> Result<LayerRecord, StoreError> {
+        scene::add_layer(
+            &self.pool,
+            ACTIVE_SCENE_ID,
+            effect_id,
+            zone_id,
+            blend_mode,
+            params,
+        )
+        .await
+    }
+    pub async fn reorder_active_layers(&self, ordered_ids: &[String]) -> Result<(), StoreError> {
+        scene::reorder_layers(&self.pool, ACTIVE_SCENE_ID, ordered_ids).await
     }
     pub async fn clear_active_scene(&self) -> Result<(), StoreError> {
         scene::clear_layers(&self.pool, ACTIVE_SCENE_ID).await

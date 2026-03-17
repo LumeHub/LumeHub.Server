@@ -185,6 +185,7 @@ pub async fn add_layer(
 pub async fn update_layer(
     pool: &SqlitePool,
     id: &str,
+    scene_id: &str,
     enabled: bool,
     blend_mode: BlendMode,
     params: &HashMap<String, ParamValue>,
@@ -193,15 +194,17 @@ pub async fn update_layer(
     let params_json = serde_json::to_string(params)?;
     let enabled_int = enabled as i64;
 
-    let rows_affected =
-        sqlx::query("UPDATE scene_layers SET enabled = ?, blend_mode = ?, params = ? WHERE id = ?")
-            .bind(enabled_int)
-            .bind(blend_str)
-            .bind(&params_json)
-            .bind(id)
-            .execute(pool)
-            .await?
-            .rows_affected();
+    let rows_affected = sqlx::query(
+        "UPDATE scene_layers SET enabled = ?, blend_mode = ?, params = ? WHERE id = ? AND scene_id = ?",
+    )
+    .bind(enabled_int)
+    .bind(blend_str)
+    .bind(&params_json)
+    .bind(id)
+    .bind(scene_id)
+    .execute(pool)
+    .await?
+    .rows_affected();
 
     if rows_affected == 0 {
         return Err(StoreError::NotFound);
@@ -209,9 +212,10 @@ pub async fn update_layer(
     get_layer(pool, id).await
 }
 
-pub async fn remove_layer(pool: &SqlitePool, id: &str) -> Result<(), StoreError> {
-    let rows_affected = sqlx::query("DELETE FROM scene_layers WHERE id = ?")
+pub async fn remove_layer(pool: &SqlitePool, id: &str, scene_id: &str) -> Result<(), StoreError> {
+    let rows_affected = sqlx::query("DELETE FROM scene_layers WHERE id = ? AND scene_id = ?")
         .bind(id)
+        .bind(scene_id)
         .execute(pool)
         .await?
         .rows_affected();
@@ -302,6 +306,22 @@ pub async fn get_layer(pool: &SqlitePool, id: &str) -> Result<LayerRecord, Store
          FROM scene_layers WHERE id = ?",
     )
     .bind(id)
+    .fetch_optional(pool)
+    .await?;
+    layer_from_row(row.ok_or(StoreError::NotFound)?)
+}
+
+pub async fn get_layer_in_scene(
+    pool: &SqlitePool,
+    id: &str,
+    scene_id: &str,
+) -> Result<LayerRecord, StoreError> {
+    let row: Option<LayerRow> = sqlx::query_as::<_, LayerRow>(
+        "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position
+         FROM scene_layers WHERE id = ? AND scene_id = ?",
+    )
+    .bind(id)
+    .bind(scene_id)
     .fetch_optional(pool)
     .await?;
     layer_from_row(row.ok_or(StoreError::NotFound)?)
