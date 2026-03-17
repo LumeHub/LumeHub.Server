@@ -231,6 +231,20 @@ pub async fn reorder_layers(
     scene_id: &str,
     ordered_ids: &[String],
 ) -> Result<(), StoreError> {
+    if ordered_ids.is_empty() {
+        return Ok(());
+    }
+
+    let existing: std::collections::HashSet<String> = get_layers(pool, scene_id)
+        .await?
+        .into_iter()
+        .map(|l| l.id)
+        .collect();
+
+    if !ordered_ids.iter().all(|id| existing.contains(id)) {
+        return Err(StoreError::NotFound);
+    }
+
     let mut tx = pool.begin().await?;
     for (position, id) in ordered_ids.iter().enumerate() {
         sqlx::query("UPDATE scene_layers SET position = ? WHERE id = ? AND scene_id = ?")
