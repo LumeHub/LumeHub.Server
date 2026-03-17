@@ -3,7 +3,7 @@ mod scene;
 mod zone;
 
 pub use effect::EffectRecord;
-pub use scene::{ACTIVE_SCENE_ID, LayerRecord, SceneRecord};
+pub use scene::{ACTIVE_SCENE_ID, LayerRecord, NewLayer, SceneRecord};
 pub use zone::ZoneRecord;
 
 use std::path::Path;
@@ -186,6 +186,9 @@ impl Store {
 
     pub async fn get_active_layers(&self) -> Result<Vec<LayerRecord>, StoreError> {
         scene::get_layers(&self.pool, ACTIVE_SCENE_ID).await
+    }
+    pub async fn replace_active_layers(&self, layers: &[NewLayer]) -> Result<(), StoreError> {
+        scene::replace_active_layers(&self.pool, layers).await
     }
     pub async fn add_active_layer(
         &self,

@@ -5,7 +5,7 @@ use actix_web::{HttpResponse, Responder, delete, get, patch, post, put, web};
 use application::SceneRuntime;
 use domain::{BlendMode, ParamValue};
 use serde::Deserialize;
-use store::Store;
+use store::{NewLayer, Store};
 
 use crate::error::ApiError;
 use crate::types::{LayerResponse, SceneResponse};
@@ -41,23 +41,25 @@ struct AddLayerRequest {
     params: HashMap<String, ParamValue>,
 }
 
+impl From<AddLayerRequest> for NewLayer {
+    fn from(r: AddLayerRequest) -> Self {
+        Self {
+            effect_id: r.effect_id,
+            zone_id: r.zone_id,
+            blend_mode: r.blend_mode,
+            params: r.params,
+        }
+    }
+}
+
 #[put("/scenes/active")]
 pub async fn set_active_scene(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
     body: web::Json<Vec<AddLayerRequest>>,
 ) -> Result<impl Responder, ApiError> {
-    store.clear_active_scene().await?;
-    for layer in body.iter() {
-        store
-            .add_active_layer(
-                &layer.effect_id,
-                &layer.zone_id,
-                layer.blend_mode,
-                &layer.params,
-            )
-            .await?;
-    }
+    let layers: Vec<NewLayer> = body.into_inner().into_iter().map(Into::into).collect();
+    store.replace_active_layers(&layers).await?;
     runtime.reload_active();
     let layers = store.get_active_layers().await?;
     Ok(HttpResponse::Ok().json(
