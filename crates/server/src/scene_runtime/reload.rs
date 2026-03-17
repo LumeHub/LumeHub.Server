@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use application::StateEventBus;
-use domain::{BlendMode, ParamDef, ParamValue};
+use domain::{BlendMode, ParamDef, ParamValue, Rgb};
 use effects::composite::CompositeEffect;
 use effects::scene_builder::LayerSpec;
 use effects::{BuiltinEffect, LiveParam, build_composite};
@@ -29,6 +29,7 @@ pub(super) struct SceneReload {
     queue: EffectQueue,
     bus: StateEventBus,
     state_tx: Option<watch::Sender<PersistedState>>,
+    primary_color: Arc<LiveParam<Rgb>>,
     strip_len: usize,
     brightness_val: f32,
 }
@@ -46,6 +47,7 @@ impl SceneReload {
             queue: rt.queue.clone(),
             bus: rt.bus.clone(),
             state_tx: rt.state_tx.clone(),
+            primary_color: Arc::clone(&rt.primary_color),
             strip_len: rt.strip_len,
             brightness_val,
         }
@@ -73,7 +75,12 @@ impl SceneReload {
         ));
         let specs = to_layer_specs(&specs_data);
 
-        match build_composite(&specs, self.strip_len, Arc::clone(&brightness)) {
+        match build_composite(
+            &specs,
+            self.strip_len,
+            Arc::clone(&brightness),
+            Arc::clone(&self.primary_color),
+        ) {
             Ok(composite) => self.start(brightness, composite),
             Err(e) => eprintln!("warning: failed to build composite: {e}"),
         }

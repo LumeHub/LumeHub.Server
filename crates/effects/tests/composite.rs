@@ -18,6 +18,10 @@ fn brightness(val: f32) -> Arc<LiveParam<f32>> {
     Arc::new(LiveParam::new(val, f32::MAX))
 }
 
+fn primary() -> Arc<LiveParam<Rgb>> {
+    Arc::new(LiveParam::new(Rgb::BLACK, f32::MAX))
+}
+
 fn full_layer(color: Rgb, mode: BlendMode, strip_len: usize) -> CompositeLayer {
     CompositeLayer {
         effect: Arc::new(Solid(color)),
@@ -31,6 +35,7 @@ fn override_mode_fills_frame_with_layer_color() {
     let effect = CompositeEffect {
         layers: vec![full_layer(Rgb::new(255, 0, 0), BlendMode::Override, 4)],
         brightness: brightness(255.0),
+        primary_color: primary(),
     };
     let frame = effect.frames(&[Rgb::BLACK; 4]).next().unwrap();
     assert!(frame.iter().all(|p| *p == Rgb::new(255, 0, 0)));
@@ -44,6 +49,7 @@ fn add_mode_saturates_channels() {
             full_layer(Rgb::new(100, 0, 0), BlendMode::Add, 4),
         ],
         brightness: brightness(255.0),
+        primary_color: primary(),
     };
     let frame = effect.frames(&[Rgb::BLACK; 4]).next().unwrap();
     assert!(frame.iter().all(|p| p.r == 255 && p.g == 0 && p.b == 0));
@@ -54,6 +60,7 @@ fn zero_brightness_yields_black_frame() {
     let effect = CompositeEffect {
         layers: vec![full_layer(Rgb::new(255, 255, 255), BlendMode::Override, 4)],
         brightness: brightness(0.0),
+        primary_color: primary(),
     };
     let frame = effect.frames(&[Rgb::BLACK; 4]).next().unwrap();
     assert!(frame.iter().all(|p| *p == Rgb::BLACK));
@@ -73,6 +80,7 @@ fn zone_restricts_rendering_to_pixel_range() {
             zone,
         }],
         brightness: brightness(255.0),
+        primary_color: primary(),
     };
     let frame = effect.frames(&[Rgb::BLACK; 4]).next().unwrap();
     assert_eq!(frame[0], Rgb::BLACK);
@@ -98,6 +106,7 @@ fn transition_extends_outside_logical_zone() {
             zone,
         }],
         brightness: brightness(255.0),
+        primary_color: primary(),
     };
     let frame = effect.frames(&[Rgb::BLACK; 10]).next().unwrap();
     // Logical interior: full red
@@ -153,6 +162,7 @@ fn adjacent_zones_blend_without_black() {
             },
         ],
         brightness: brightness(255.0),
+        primary_color: primary(),
     };
     let frame = effect.frames(&[Rgb::BLACK; 10]).next().unwrap();
     // Full red in A's interior
@@ -176,6 +186,7 @@ fn frames_iterator_is_infinite() {
     let effect = CompositeEffect {
         layers: vec![full_layer(Rgb::new(0, 255, 0), BlendMode::Override, 2)],
         brightness: brightness(255.0),
+        primary_color: primary(),
     };
     assert_eq!(effect.frames(&[Rgb::BLACK; 2]).take(1000).count(), 1000);
 }

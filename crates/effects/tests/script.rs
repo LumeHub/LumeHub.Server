@@ -117,7 +117,8 @@ fn build_composite_creates_valid_effect() {
         zone_transition: 0,
     }];
     let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
-    let composite = build_composite(&specs, 4, brightness).unwrap();
+    let primary = Arc::new(LiveParam::new(Rgb::BLACK, f32::MAX));
+    let composite = build_composite(&specs, 4, brightness, primary).unwrap();
     let frame = composite.frames(&[Rgb::BLACK; 4]).next().unwrap();
     assert!(frame.iter().all(|p| *p == Rgb::new(255, 0, 0)));
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use domain::{BlendMode, ParamDef, ParamValue};
+use domain::{BlendMode, ParamDef, ParamValue, Rgb};
 
 use crate::compositor::composite::CompositeEffect;
 use crate::compositor::layer::{CompositeLayer, ZoneGradient};
@@ -23,6 +23,7 @@ pub fn build_composite(
     layers: &[LayerSpec<'_>],
     strip_len: usize,
     brightness: Arc<LiveParam<f32>>,
+    primary_color: Arc<LiveParam<Rgb>>,
 ) -> Result<CompositeEffect, EffectError> {
     let composite_layers = layers
         .iter()
@@ -31,6 +32,7 @@ pub fn build_composite(
                 spec.script,
                 spec.param_defs,
                 spec.params,
+                Arc::clone(&primary_color),
                 strip_len,
                 spec.zone_start,
             )
@@ -54,5 +56,6 @@ pub fn build_composite(
     Ok(CompositeEffect {
         layers: composite_layers,
         brightness,
+        primary_color,
     })
 }

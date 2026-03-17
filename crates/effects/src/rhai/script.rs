@@ -8,6 +8,7 @@ use domain::{ParamDef, ParamValue, Rgb};
 
 use super::{make_script_engine, parse_color};
 use crate::compositor::layer::LayerEffect;
+use crate::compositor::live_param::LiveParam;
 use crate::compositor::registry::EffectRegistry;
 use crate::error::EffectError;
 
@@ -16,6 +17,7 @@ pub struct ScriptLayer {
     ast: AST,
     frame: AtomicU64,
     params: Vec<(ImmutableString, Dynamic)>,
+    primary_color: Arc<LiveParam<Rgb>>,
     strip_len: usize,
     zone_start: usize,
 }
@@ -35,6 +37,7 @@ impl LayerEffect for ScriptLayer {
         for (name, val) in &self.params {
             scope.push_dynamic(name.as_str(), val.clone());
         }
+        scope.push("primary", self.primary_color.get());
 
         let base_len = scope.len();
         (0..len)
@@ -57,6 +60,7 @@ pub fn build_layer(
     script: &str,
     param_defs: &[ParamDef],
     layer_params: &HashMap<String, ParamValue>,
+    primary_color: Arc<LiveParam<Rgb>>,
     strip_len: usize,
     zone_start: usize,
 ) -> Result<Arc<dyn LayerEffect>, EffectError> {
@@ -76,6 +80,7 @@ pub fn build_layer(
         ast,
         frame: AtomicU64::new(0),
         params,
+        primary_color,
         strip_len,
         zone_start,
     }))
@@ -97,6 +102,7 @@ pub fn register(registry: &mut EffectRegistry) {
             ast,
             frame: AtomicU64::new(0),
             params: Vec::new(),
+            primary_color: Arc::new(LiveParam::new(Rgb::BLACK, 5.0)),
             strip_len,
             zone_start,
         }))

@@ -12,7 +12,7 @@ use engine::{EffectQueue, RenderCommand};
 use api_google::effects::{ColorLoop, Sleep, Wake};
 use application::{SceneRuntime, SceneSnapshot, StateEventBus};
 use domain::Rgb;
-use effects::BuiltinEffect;
+use effects::{BuiltinEffect, LiveParam};
 use persistence::PersistedState;
 use store::Store;
 
@@ -26,6 +26,7 @@ pub struct RenderTaskRuntime {
     pub(crate) state_tx: Option<tokio::sync::watch::Sender<PersistedState>>,
     pub(crate) store: Arc<Store>,
     pub(crate) builtins: Arc<HashMap<String, BuiltinEffect>>,
+    pub(crate) primary_color: Arc<LiveParam<Rgb>>,
     pub(crate) strip_len: usize,
 }
 
@@ -39,6 +40,7 @@ impl RenderTaskRuntime {
         builtins: Vec<BuiltinEffect>,
         strip_len: usize,
     ) -> Self {
+        let color_speed = queue.color_speed();
         Self {
             queue,
             state: Arc::new(Mutex::new(SceneState {
@@ -51,6 +53,7 @@ impl RenderTaskRuntime {
             state_tx,
             store,
             builtins: Arc::new(builtins.into_iter().map(|b| (b.id(), b)).collect()),
+            primary_color: Arc::new(LiveParam::new(initial.color, color_speed)),
             strip_len,
         }
     }
@@ -74,6 +77,7 @@ impl RenderTaskRuntime {
 
 impl SceneRuntime for RenderTaskRuntime {
     fn set_color(&self, color: Rgb) {
+        self.primary_color.set(color);
         self.with_state(|state, queue| {
             state.color = color;
             state.on = true;

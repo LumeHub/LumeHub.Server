@@ -9,6 +9,7 @@ use super::live_param::LiveParam;
 pub struct CompositeEffect {
     pub layers: Vec<CompositeLayer>,
     pub brightness: Arc<LiveParam<f32>>,
+    pub primary_color: Arc<LiveParam<Rgb>>,
 }
 
 impl Effect for CompositeEffect {
@@ -16,9 +17,11 @@ impl Effect for CompositeEffect {
         let strip_len = pixels.len();
         let layers = cull_layers(&self.layers, strip_len);
         let brightness = Arc::clone(&self.brightness);
+        let primary_color = Arc::clone(&self.primary_color);
 
         Box::new(std::iter::from_fn(move || {
             brightness.tick();
+            primary_color.tick();
             let frame = layers
                 .iter()
                 .fold(vec![Rgb::BLACK; strip_len], |base, layer| {
