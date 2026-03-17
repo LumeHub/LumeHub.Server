@@ -224,23 +224,31 @@ pub(super) async fn copy_layers(
     to_scene_id: &str,
 ) -> Result<(), StoreError> {
     let layers = get_layers(pool, from_scene_id).await?;
-    for layer in layers {
-        let params_json = serde_json::to_string(&layer.params)?;
-        let new_id = Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        )
-        .bind(&new_id)
-        .bind(to_scene_id)
-        .bind(&layer.effect_id)
-        .bind(&layer.zone_id)
-        .bind(blend_mode_to_str(layer.blend_mode))
-        .bind(&params_json)
-        .bind(layer.enabled as i64)
-        .bind(layer.position as i64)
-        .execute(pool)
-        .await?;
+    if layers.is_empty() {
+        return Ok(());
     }
+
+    let entries = layers
+        .iter()
+        .map(|l| serde_json::to_string(&l.params).map(|p| (Uuid::new_v4().to_string(), l, p)))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    sqlx::QueryBuilder::new(
+        "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position) ",
+    )
+    .push_values(&entries, |mut b, (id, layer, params)| {
+        b.push_bind(id.as_str())
+            .push_bind(to_scene_id)
+            .push_bind(layer.effect_id.as_str())
+            .push_bind(layer.zone_id.as_str())
+            .push_bind(blend_mode_to_str(layer.blend_mode))
+            .push_bind(params.as_str())
+            .push_bind(layer.enabled as i64)
+            .push_bind(layer.position as i64);
+    })
+    .build()
+    .execute(pool)
+    .await?;
+
     Ok(())
 }

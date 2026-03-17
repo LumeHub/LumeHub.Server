@@ -6,8 +6,6 @@ use crate::StoreError;
 use super::layers::{NewLayer, blend_mode_to_str, clear_layers, copy_layers};
 use super::scenes::{SceneRecord, create, get_one};
 
-pub const ACTIVE_SCENE_ID: &str = "__active__";
-
 pub async fn replace_active_layers(
     pool: &SqlitePool,
     layers: &[NewLayer],
@@ -25,7 +23,7 @@ pub async fn replace_active_layers(
     let mut tx = pool.begin().await?;
 
     sqlx::query("DELETE FROM scene_layers WHERE scene_id = ?")
-        .bind(ACTIVE_SCENE_ID)
+        .bind(super::ACTIVE_SCENE_ID)
         .execute(&mut *tx)
         .await?;
 
@@ -35,7 +33,7 @@ pub async fn replace_active_layers(
         )
         .push_values(&entries, |mut b, (id, layer, params, pos)| {
             b.push_bind(id.as_str())
-                .push_bind(ACTIVE_SCENE_ID)
+                .push_bind(super::ACTIVE_SCENE_ID)
                 .push_bind(layer.effect_id.as_str())
                 .push_bind(layer.zone_id.as_str())
                 .push_bind(blend_mode_to_str(layer.blend_mode))
@@ -54,21 +52,21 @@ pub async fn replace_active_layers(
 
 pub async fn load_into_active(pool: &SqlitePool, scene_id: &str) -> Result<(), StoreError> {
     get_one(pool, scene_id).await?;
-    clear_layers(pool, ACTIVE_SCENE_ID).await?;
-    copy_layers(pool, scene_id, ACTIVE_SCENE_ID).await
+    clear_layers(pool, super::ACTIVE_SCENE_ID).await?;
+    copy_layers(pool, scene_id, super::ACTIVE_SCENE_ID).await
 }
 
 pub async fn save_active_as(pool: &SqlitePool, name: &str) -> Result<SceneRecord, StoreError> {
     let scene = create(pool, name).await?;
-    copy_layers(pool, ACTIVE_SCENE_ID, &scene.id).await?;
+    copy_layers(pool, super::ACTIVE_SCENE_ID, &scene.id).await?;
     Ok(scene)
 }
 
 pub async fn overwrite_from_active(pool: &SqlitePool, id: &str) -> Result<(), StoreError> {
-    if id == ACTIVE_SCENE_ID {
+    if id == super::ACTIVE_SCENE_ID {
         return Err(StoreError::NotFound);
     }
     clear_layers(pool, id).await?;
-    copy_layers(pool, ACTIVE_SCENE_ID, id).await?;
+    copy_layers(pool, super::ACTIVE_SCENE_ID, id).await?;
     Ok(())
 }
