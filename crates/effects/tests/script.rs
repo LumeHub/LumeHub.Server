@@ -1,4 +1,4 @@
-use domain::{BlendMode, Rgb};
+use domain::{BlendMode, ParamControl, ParamDef, ParamValue, Rgb};
 use effects::scene_builder::LayerSpec;
 use effects::{LiveParam, build_composite};
 use engine::effect::Effect;
@@ -89,4 +89,82 @@ fn remap_maps_range() {
         1,
     );
     assert_eq!(px[0], Rgb::new(255, 0, 0));
+}
+
+fn color_param_def(name: &str) -> ParamDef {
+    ParamDef {
+        name: name.to_string(),
+        label: name.to_string(),
+        control: ParamControl::Color,
+        default: ParamValue::Color(Rgb::BLACK),
+    }
+}
+
+fn render_with_primary(
+    code: &str,
+    param_defs: &[ParamDef],
+    params: &HashMap<String, ParamValue>,
+    primary: Arc<LiveParam<Rgb>>,
+    len: usize,
+) -> Vec<Rgb> {
+    let specs = [LayerSpec {
+        script: code,
+        param_defs,
+        params,
+        blend_mode: BlendMode::Override,
+        zone_start: 0,
+        zone_end: len,
+        zone_transition: 0,
+    }];
+    let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
+    let composite = build_composite(&specs, len, brightness, primary).unwrap();
+    composite.frames(&vec![Rgb::BLACK; len]).next().unwrap()
+}
+
+#[test]
+fn device_color_param_uses_primary_color() {
+    let primary = Arc::new(LiveParam::new(Rgb::new(255, 0, 0), f32::MAX));
+    let defs = [color_param_def("color")];
+    let params = [("color".to_string(), ParamValue::DeviceColor)].into();
+
+    let frame = render_with_primary("color", &defs, &params, Arc::clone(&primary), 4);
+
+    assert!(frame.iter().all(|p| *p == Rgb::new(255, 0, 0)));
+}
+
+#[test]
+fn device_color_param_updates_when_primary_changes() {
+    let primary = Arc::new(LiveParam::new(Rgb::new(255, 0, 0), f32::MAX));
+    let defs = [color_param_def("color")];
+    let params = [("color".to_string(), ParamValue::DeviceColor)].into();
+
+    let specs = [LayerSpec {
+        script: "color",
+        param_defs: &defs,
+        params: &params,
+        blend_mode: BlendMode::Override,
+        zone_start: 0,
+        zone_end: 1,
+        zone_transition: 0,
+    }];
+    let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
+    let composite = build_composite(&specs, 1, brightness, Arc::clone(&primary)).unwrap();
+    let mut frames = composite.frames(&vec![Rgb::BLACK; 1]);
+
+    assert_eq!(frames.next().unwrap()[0], Rgb::new(255, 0, 0));
+
+    primary.set_immediate(Rgb::new(0, 0, 255));
+
+    assert_eq!(frames.next().unwrap()[0], Rgb::new(0, 0, 255));
+}
+
+#[test]
+fn static_color_param_is_unaffected_by_primary_change() {
+    let primary = Arc::new(LiveParam::new(Rgb::new(255, 0, 0), f32::MAX));
+    let defs = [color_param_def("color")];
+    let params = [("color".to_string(), ParamValue::Color(Rgb::new(0, 255, 0)))].into();
+
+    let frame = render_with_primary("color", &defs, &params, Arc::clone(&primary), 4);
+
+    assert!(frame.iter().all(|p| *p == Rgb::new(0, 255, 0)));
 }

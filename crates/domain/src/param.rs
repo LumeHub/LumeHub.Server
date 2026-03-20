@@ -26,6 +26,7 @@ pub enum ParamValue {
     Color(Rgb),
     Bool(bool),
     Select(String),
+    DeviceColor,
 }
 
 /// Definition of a single parameter on an effect.

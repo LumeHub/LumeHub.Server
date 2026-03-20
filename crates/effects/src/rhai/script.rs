@@ -16,6 +16,7 @@ pub struct ScriptLayer {
     ast: AST,
     frame: AtomicU64,
     params: Vec<(ImmutableString, Dynamic)>,
+    device_color_params: Vec<ImmutableString>,
     primary_color: Arc<LiveParam<Rgb>>,
     strip_len: usize,
     zone_start: usize,
@@ -36,7 +37,11 @@ impl LayerEffect for ScriptLayer {
         for (name, val) in &self.params {
             scope.push_dynamic(name.as_str(), val.clone());
         }
-        scope.push("primary", self.primary_color.get());
+        let primary = self.primary_color.get();
+        for name in &self.device_color_params {
+            scope.push_dynamic(name.as_str(), Dynamic::from(primary));
+        }
+        scope.push("primary", primary);
 
         let base_len = scope.len();
         (0..len)
@@ -70,10 +75,21 @@ pub fn build_layer(
 ) -> Result<Arc<dyn LayerEffect>, EffectError> {
     let params: Vec<(ImmutableString, Dynamic)> = param_defs
         .iter()
+        .filter(|def| {
+            layer_params.get(&def.name).unwrap_or(&def.default) != &ParamValue::DeviceColor
+        })
         .map(|def| {
             let value = layer_params.get(&def.name).unwrap_or(&def.default);
             (ImmutableString::from(&def.name), param_to_dynamic(value))
         })
+        .collect();
+
+    let device_color_params: Vec<ImmutableString> = param_defs
+        .iter()
+        .filter(|def| {
+            layer_params.get(&def.name).unwrap_or(&def.default) == &ParamValue::DeviceColor
+        })
+        .map(|def| ImmutableString::from(&def.name))
         .collect();
 
     let engine = make_script_engine();
@@ -84,6 +100,7 @@ pub fn build_layer(
         ast,
         frame: AtomicU64::new(0),
         params,
+        device_color_params,
         primary_color,
         strip_len,
         zone_start,
@@ -96,5 +113,6 @@ pub fn param_to_dynamic(value: &ParamValue) -> Dynamic {
         ParamValue::Color(rgb) => Dynamic::from(*rgb),
         ParamValue::Bool(b) => Dynamic::from(*b),
         ParamValue::Select(s) => Dynamic::from(s.clone()),
+        ParamValue::DeviceColor => Dynamic::from(Rgb::BLACK),
     }
 }
