@@ -21,14 +21,4 @@ pub enum EffectError {
         #[source]
         source: Box<EffectError>,
     },
-
-    #[error("preset signal '{signal}' script error: {source}")]
-    SignalScript {
-        signal: String,
-        #[source]
-        source: Box<EffectError>,
-    },
-
-    #[error("preset nesting too deep (max {0})")]
-    NestingTooDeep(usize),
 }

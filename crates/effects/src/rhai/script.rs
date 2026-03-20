@@ -9,7 +9,6 @@ use domain::{ParamDef, ParamValue, Rgb};
 use super::{make_script_engine, parse_color};
 use crate::compositor::layer::LayerEffect;
 use crate::compositor::live_param::LiveParam;
-use crate::compositor::registry::EffectRegistry;
 use crate::error::EffectError;
 
 pub struct ScriptLayer {
@@ -89,29 +88,6 @@ pub fn build_layer(
         strip_len,
         zone_start,
     }))
-}
-
-pub fn register(registry: &mut EffectRegistry) {
-    registry.register_layer("script", |params, strip_len, zone_start| {
-        let code = params
-            .get("code")
-            .and_then(|v| v.as_str())
-            .unwrap_or("")
-            .to_string();
-
-        let engine = make_script_engine();
-        let ast = engine.compile(&code).map_err(EffectError::ScriptCompile)?;
-
-        Ok(Arc::new(ScriptLayer {
-            engine,
-            ast,
-            frame: AtomicU64::new(0),
-            params: Vec::new(),
-            primary_color: Arc::new(LiveParam::new(Rgb::BLACK, 5.0)),
-            strip_len,
-            zone_start,
-        }))
-    });
 }
 
 pub fn param_to_dynamic(value: &ParamValue) -> Dynamic {
