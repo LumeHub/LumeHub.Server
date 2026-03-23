@@ -6,6 +6,8 @@ use store::{Store, ZoneRecord};
 
 use crate::error::ApiError;
 
+const ALL_ZONE_ID: &str = "all";
+
 #[derive(Serialize)]
 struct ZoneResponse {
     id: String,
@@ -27,15 +29,24 @@ impl From<ZoneRecord> for ZoneResponse {
     }
 }
 
+fn all_zone(strip_len: usize) -> ZoneResponse {
+    ZoneResponse {
+        id: ALL_ZONE_ID.to_string(),
+        name: "Full Strip".to_string(),
+        start_pixel: 0,
+        end_pixel: strip_len.saturating_sub(1) as u32,
+        transition_length: 0,
+    }
+}
+
 #[get("/zones")]
-pub async fn list_zones(store: web::Data<Arc<Store>>) -> Result<impl Responder, ApiError> {
-    let zones = store.get_zones().await?;
-    Ok(HttpResponse::Ok().json(
-        zones
-            .into_iter()
-            .map(ZoneResponse::from)
-            .collect::<Vec<_>>(),
-    ))
+pub async fn list_zones(
+    store: web::Data<Arc<Store>>,
+    strip_len: web::Data<usize>,
+) -> Result<impl Responder, ApiError> {
+    let mut zones = vec![all_zone(**strip_len)];
+    zones.extend(store.get_zones().await?.into_iter().map(ZoneResponse::from));
+    Ok(HttpResponse::Ok().json(zones))
 }
 
 #[derive(Deserialize)]
@@ -66,9 +77,14 @@ pub async fn create_zone(
 #[get("/zones/{id}")]
 pub async fn get_zone(
     store: web::Data<Arc<Store>>,
+    strip_len: web::Data<usize>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
-    let zone = store.get_zone(&path.into_inner()).await?;
+    let id = path.into_inner();
+    if id == ALL_ZONE_ID {
+        return Ok(HttpResponse::Ok().json(all_zone(**strip_len)));
+    }
+    let zone = store.get_zone(&id).await?;
     Ok(HttpResponse::Ok().json(ZoneResponse::from(zone)))
 }
 
@@ -78,9 +94,13 @@ pub async fn update_zone(
     path: web::Path<String>,
     body: web::Json<ZoneBody>,
 ) -> Result<impl Responder, ApiError> {
+    let id = path.into_inner();
+    if id == ALL_ZONE_ID {
+        return Err(ApiError::Forbidden("cannot modify the full-strip zone"));
+    }
     let zone = store
         .update_zone(
-            &path.into_inner(),
+            &id,
             &body.name,
             body.start_pixel,
             body.end_pixel,
@@ -95,7 +115,11 @@ pub async fn delete_zone(
     store: web::Data<Arc<Store>>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
-    store.delete_zone(&path.into_inner()).await?;
+    let id = path.into_inner();
+    if id == ALL_ZONE_ID {
+        return Err(ApiError::Forbidden("cannot delete the full-strip zone"));
+    }
+    store.delete_zone(&id).await?;
     Ok(HttpResponse::NoContent().finish())
 }
 

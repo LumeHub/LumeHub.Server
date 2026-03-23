@@ -106,6 +106,7 @@ async fn main() -> std::io::Result<()> {
         let app = App::new()
             .app_data(web::Data::new(effect_queue.clone()))
             .app_data(web::Data::new(store.clone()))
+            .app_data(web::Data::new(strip_len))
             .app_data(builtins_data.clone())
             .app_data(web::Data::from(Arc::clone(&runtime)))
             .app_data(web::Data::new(event_bus.clone()))
