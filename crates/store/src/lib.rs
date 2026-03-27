@@ -147,11 +147,15 @@ impl Store {
         &self,
         id: &str,
         scene_id: &str,
+        zone_id: &str,
         enabled: bool,
         blend_mode: domain::BlendMode,
         params: &std::collections::HashMap<String, domain::ParamValue>,
     ) -> Result<LayerRecord, StoreError> {
-        scene::update_layer(&self.pool, id, scene_id, enabled, blend_mode, params).await
+        scene::update_layer(
+            &self.pool, id, scene_id, zone_id, enabled, blend_mode, params,
+        )
+        .await
     }
     pub async fn remove_layer(&self, id: &str, scene_id: &str) -> Result<(), StoreError> {
         scene::remove_layer(&self.pool, id, scene_id).await
@@ -163,11 +167,21 @@ impl Store {
     pub async fn update_active_layer(
         &self,
         id: &str,
+        zone_id: &str,
         enabled: bool,
         blend_mode: domain::BlendMode,
         params: &std::collections::HashMap<String, domain::ParamValue>,
     ) -> Result<LayerRecord, StoreError> {
-        scene::update_layer(&self.pool, id, ACTIVE_SCENE_ID, enabled, blend_mode, params).await
+        scene::update_layer(
+            &self.pool,
+            id,
+            ACTIVE_SCENE_ID,
+            zone_id,
+            enabled,
+            blend_mode,
+            params,
+        )
+        .await
     }
     pub async fn remove_active_layer(&self, id: &str) -> Result<(), StoreError> {
         scene::remove_layer(&self.pool, id, ACTIVE_SCENE_ID).await

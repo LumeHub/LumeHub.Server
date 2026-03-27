@@ -138,6 +138,7 @@ pub async fn update_layer(
     pool: &SqlitePool,
     id: &str,
     scene_id: &str,
+    zone_id: &str,
     enabled: bool,
     blend_mode: BlendMode,
     params: &HashMap<String, ParamValue>,
@@ -147,8 +148,9 @@ pub async fn update_layer(
     let enabled_int = enabled as i64;
 
     let rows_affected = sqlx::query(
-        "UPDATE scene_layers SET enabled = ?, blend_mode = ?, params = ? WHERE id = ? AND scene_id = ?",
+        "UPDATE scene_layers SET zone_id = ?, enabled = ?, blend_mode = ?, params = ? WHERE id = ? AND scene_id = ?",
     )
+    .bind(zone_id)
     .bind(enabled_int)
     .bind(blend_str)
     .bind(&params_json)

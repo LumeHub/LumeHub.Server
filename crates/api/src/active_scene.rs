@@ -90,6 +90,7 @@ pub async fn add_layer(
 
 #[derive(Deserialize)]
 struct PatchLayerRequest {
+    zone_id: Option<String>,
     enabled: Option<bool>,
     blend_mode: Option<BlendMode>,
     params: Option<HashMap<String, ParamValue>>,
@@ -104,11 +105,12 @@ pub async fn patch_layer(
 ) -> Result<impl Responder, ApiError> {
     let id = path.into_inner();
     let current = store.get_active_layer(&id).await?;
+    let zone_id = body.zone_id.as_deref().unwrap_or(&current.zone_id);
     let enabled = body.enabled.unwrap_or(current.enabled);
     let blend_mode = body.blend_mode.unwrap_or(current.blend_mode);
     let params = body.params.clone().unwrap_or(current.params);
     let layer = store
-        .update_active_layer(&id, enabled, blend_mode, &params)
+        .update_active_layer(&id, zone_id, enabled, blend_mode, &params)
         .await?;
     runtime.reload_active();
     Ok(HttpResponse::Ok().json(LayerResponse::from(layer)))

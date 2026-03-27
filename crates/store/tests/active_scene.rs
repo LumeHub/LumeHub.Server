@@ -27,7 +27,7 @@ async fn layer_lifecycle() {
     assert_eq!(layer.params["speed"], ParamValue::Number(2.0));
 
     let updated = store
-        .update_active_layer(&layer.id, false, BlendMode::Add, &[].into())
+        .update_active_layer(&layer.id, &zone.id, false, BlendMode::Add, &[].into())
         .await
         .unwrap();
     assert!(!updated.enabled);

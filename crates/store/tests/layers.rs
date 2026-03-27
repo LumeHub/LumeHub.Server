@@ -57,6 +57,7 @@ async fn update_layer() {
         .update_layer(
             &layer.id,
             &scene.id,
+            &zone.id,
             false,
             BlendMode::Screen,
             &helpers::make_params(),
