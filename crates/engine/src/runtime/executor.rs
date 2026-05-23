@@ -1,14 +1,15 @@
 use super::{
     ActiveEffect, RenderCommand,
-    transition::{crossfade, transition_to_state},
+    transition::{blend, fade_to_solid, solid_frames},
 };
 use crate::Output;
-use domain::DeviceState;
+use domain::{DeviceState, Rgb, TransitionCurve};
 use std::sync::mpsc::{Receiver, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 const FRAME_DURATION: Duration = Duration::from_millis(16);
+const DEFAULT_CURVE: TransitionCurve = TransitionCurve::Linear;
 
 pub fn spawn(
     output: Box<dyn Output>,
@@ -51,7 +52,7 @@ struct Executor {
     output: Box<dyn Output>,
     state: DeviceState,
     current: ActiveEffect,
-    crossfade_frames: usize,
+    crossfade_frames: u32,
 }
 
 impl Executor {
@@ -60,47 +61,64 @@ impl Executor {
             output,
             state: DeviceState::default(),
             current: None,
-            crossfade_frames,
+            crossfade_frames: crossfade_frames as u32,
         }
     }
 
     fn handle(&mut self, cmd: RenderCommand) {
         match cmd {
             RenderCommand::Execute(effect) => {
-                let from = self.output.pixels().to_vec();
-                let inner = effect.frames(self.output.pixels());
-                self.current = Some(crossfade(from, inner, self.crossfade_frames));
+                let to = effect.frames(self.output.pixels());
+                let from = self.take_from();
+                self.current = Some(blend(from, to, self.crossfade_frames, DEFAULT_CURVE));
             }
             RenderCommand::Halt => self.current = None,
             RenderCommand::SetBrightness(b) => {
                 self.state.brightness = b;
-                transition_to_state(
-                    &self.state,
-                    &mut self.current,
-                    &mut *self.output,
-                    self.crossfade_frames,
-                );
+                self.transition_to_state();
             }
             RenderCommand::SetOnOff(on) => {
                 self.state.on = on;
-                transition_to_state(
-                    &self.state,
-                    &mut self.current,
-                    &mut *self.output,
-                    self.crossfade_frames,
-                );
+                self.transition_to_state();
             }
             RenderCommand::SetColor(color) => {
                 self.state.color = color;
                 self.state.on = true;
-                transition_to_state(
-                    &self.state,
-                    &mut self.current,
-                    &mut *self.output,
-                    self.crossfade_frames,
-                );
+                self.transition_to_state();
             }
         }
+    }
+
+    fn transition_to_state(&mut self) {
+        let target = self.target_pixels();
+        if self.crossfade_frames == 0 {
+            self.output.pixels_mut().copy_from_slice(&target);
+            self.output.show();
+            self.current = None;
+            return;
+        }
+        let from = self.take_from();
+        self.current = Some(fade_to_solid(
+            from,
+            target,
+            self.crossfade_frames,
+            DEFAULT_CURVE,
+        ));
+    }
+
+    fn take_from(&mut self) -> crate::FrameIter {
+        self.current
+            .take()
+            .unwrap_or_else(|| solid_frames(self.output.pixels().to_vec()))
+    }
+
+    fn target_pixels(&self) -> Vec<Rgb> {
+        let color = if self.state.on {
+            self.state.color.with_brightness(self.state.brightness)
+        } else {
+            Rgb::BLACK
+        };
+        vec![color; self.output.pixels().len()]
     }
 
     fn tick(&mut self) {
