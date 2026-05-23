@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use application::{SceneRuntime, SceneSnapshot};
 use domain::{Rgb, TransitionSpec};
@@ -39,4 +39,53 @@ pub async fn make_store() -> Arc<Store> {
 
 pub fn mock_runtime() -> Arc<dyn SceneRuntime> {
     Arc::new(MockRuntime)
+}
+
+pub struct DefaultSpecRuntime {
+    default: TransitionSpec,
+    pub last_color: Mutex<Option<(Rgb, TransitionSpec)>>,
+    pub last_brightness: Mutex<Option<(u8, TransitionSpec)>>,
+    pub last_on_off: Mutex<Option<(bool, TransitionSpec)>>,
+    pub last_reload: Mutex<Option<TransitionSpec>>,
+}
+
+impl DefaultSpecRuntime {
+    pub fn new(default: TransitionSpec) -> Self {
+        Self {
+            default,
+            last_color: Mutex::new(None),
+            last_brightness: Mutex::new(None),
+            last_on_off: Mutex::new(None),
+            last_reload: Mutex::new(None),
+        }
+    }
+}
+
+impl SceneRuntime for DefaultSpecRuntime {
+    fn default_spec(&self) -> TransitionSpec {
+        self.default
+    }
+    fn set_color_with(&self, color: Rgb, spec: TransitionSpec) {
+        *self.last_color.lock().unwrap() = Some((color, spec));
+    }
+    fn set_brightness_with(&self, b: u8, spec: TransitionSpec) {
+        *self.last_brightness.lock().unwrap() = Some((b, spec));
+    }
+    fn set_on_off_with(&self, on: bool, spec: TransitionSpec) {
+        *self.last_on_off.lock().unwrap() = Some((on, spec));
+    }
+    fn halt(&self) {}
+    fn stop_effect(&self) {}
+    fn reload_active_with(&self, spec: TransitionSpec) {
+        *self.last_reload.lock().unwrap() = Some(spec);
+    }
+    fn snapshot(&self) -> SceneSnapshot {
+        SceneSnapshot {
+            on: true,
+            brightness: 255,
+            color: Rgb::BLACK,
+            active_effect: None,
+            light_effect_end_unix_timestamp_sec: None,
+        }
+    }
 }

@@ -4,5 +4,6 @@ pub mod effects;
 pub mod error;
 pub mod events;
 pub mod scenes;
+pub mod transition;
 pub mod types;
 pub mod zones;

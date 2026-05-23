@@ -6,7 +6,8 @@ use actix_web::http::StatusCode;
 use actix_web::test::{self, TestRequest};
 use actix_web::{App, web};
 use application::SceneRuntime;
-use common::{make_store, mock_runtime};
+use common::{DefaultSpecRuntime, make_store, mock_runtime};
+use domain::{TransitionCurve, TransitionSpec};
 use serde_json::{Value, json};
 
 // active_scene routes must come BEFORE scenes routes: /scenes/active must match
@@ -184,4 +185,90 @@ async fn load_nonexistent_returns_404() {
     )
     .await;
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+macro_rules! svc_with {
+    ($runtime:expr) => {{
+        test::init_service(
+            App::new()
+                .app_data(web::Data::new(make_store().await))
+                .app_data(web::Data::from($runtime.clone() as Arc<dyn SceneRuntime>))
+                .configure(api::active_scene::config)
+                .configure(api::scenes::config),
+        )
+        .await
+    }};
+}
+
+#[actix_web::test]
+async fn add_layer_without_query_forwards_runtime_default_spec_to_reload() {
+    let default = TransitionSpec::new(400, TransitionCurve::EaseInOut);
+    let rec = Arc::new(DefaultSpecRuntime::new(default));
+    let svc = svc_with!(rec);
+    test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/layers")
+            .set_json(json!({"effect_id": "builtin:rainbow", "zone_id": "all"}))
+            .to_request(),
+    )
+    .await;
+    assert_eq!(rec.last_reload.lock().unwrap().unwrap(), default);
+}
+
+#[actix_web::test]
+async fn add_layer_with_fade_ms_forwards_overridden_spec_to_reload() {
+    let rec = Arc::new(DefaultSpecRuntime::new(TransitionSpec::new(
+        300,
+        TransitionCurve::EaseInOut,
+    )));
+    let svc = svc_with!(rec);
+    test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/layers?fade_ms=2500&curve=ease_in")
+            .set_json(json!({"effect_id": "builtin:rainbow", "zone_id": "all"}))
+            .to_request(),
+    )
+    .await;
+    let spec = rec.last_reload.lock().unwrap().unwrap();
+    assert_eq!(spec, TransitionSpec::new(2500, TransitionCurve::EaseIn));
+}
+
+#[actix_web::test]
+async fn load_scene_forwards_fade_ms_to_reload() {
+    let rec = Arc::new(DefaultSpecRuntime::new(TransitionSpec::INSTANT));
+    let svc = svc_with!(rec);
+
+    test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/layers")
+            .set_json(json!({"effect_id": "builtin:rainbow", "zone_id": "all"}))
+            .to_request(),
+    )
+    .await;
+    let save_resp = test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/save")
+            .set_json(json!({"name": "tv"}))
+            .to_request(),
+    )
+    .await;
+    let body: Value = test::read_body_json(save_resp).await;
+    let scene_id = body["id"].as_str().unwrap().to_string();
+
+    test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri(&format!(
+                "/scenes/active/load/{scene_id}?fade_ms=10000&curve=ease_out"
+            ))
+            .to_request(),
+    )
+    .await;
+
+    let spec = rec.last_reload.lock().unwrap().unwrap();
+    assert_eq!(spec, TransitionSpec::new(10000, TransitionCurve::EaseOut));
 }

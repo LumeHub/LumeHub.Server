@@ -8,6 +8,7 @@ use serde::Deserialize;
 use store::{NewLayer, Store};
 
 use crate::error::ApiError;
+use crate::transition::TransitionQuery;
 use crate::types::{LayerResponse, SceneResponse};
 
 #[get("/scenes/active")]
@@ -56,11 +57,12 @@ impl From<AddLayerRequest> for NewLayer {
 pub async fn set_active_scene(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     body: web::Json<Vec<AddLayerRequest>>,
 ) -> Result<impl Responder, ApiError> {
     let layers: Vec<NewLayer> = body.into_inner().into_iter().map(Into::into).collect();
     store.replace_active_layers(&layers).await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     let layers = store.get_active_layers().await?;
     Ok(HttpResponse::Ok().json(
         layers
@@ -74,6 +76,7 @@ pub async fn set_active_scene(
 pub async fn add_layer(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     body: web::Json<AddLayerRequest>,
 ) -> Result<impl Responder, ApiError> {
     let layer = store
@@ -84,7 +87,7 @@ pub async fn add_layer(
             &body.params,
         )
         .await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::Created().json(LayerResponse::from(layer)))
 }
 
@@ -100,6 +103,7 @@ struct PatchLayerRequest {
 pub async fn patch_layer(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     path: web::Path<String>,
     body: web::Json<PatchLayerRequest>,
 ) -> Result<impl Responder, ApiError> {
@@ -112,7 +116,7 @@ pub async fn patch_layer(
     let layer = store
         .update_active_layer(&id, zone_id, enabled, blend_mode, &params)
         .await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::Ok().json(LayerResponse::from(layer)))
 }
 
@@ -120,10 +124,11 @@ pub async fn patch_layer(
 pub async fn remove_layer(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
     store.remove_active_layer(&path.into_inner()).await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::NoContent().finish())
 }
 
@@ -136,10 +141,11 @@ struct ReorderRequest {
 pub async fn reorder_layers(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     body: web::Json<ReorderRequest>,
 ) -> Result<impl Responder, ApiError> {
     store.reorder_active_layers(&body.ordered_ids).await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::NoContent().finish())
 }
 
@@ -161,10 +167,11 @@ pub async fn save_active_scene(
 pub async fn load_scene_into_active(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
     store.load_scene_into_active(&path.into_inner()).await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::NoContent().finish())
 }
 
