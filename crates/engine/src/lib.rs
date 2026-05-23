@@ -7,3 +7,5 @@ pub mod output;
 pub use output::Output;
 pub mod queue;
 pub use queue::EffectQueue;
+
+pub const FRAME_DURATION_MS: u32 = 16;

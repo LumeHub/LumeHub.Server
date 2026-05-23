@@ -1,4 +1,4 @@
-use domain::Rgb;
+use domain::{Rgb, TransitionCurve, TransitionSpec};
 use engine::{Effect, FrameIter, Output, RenderCommand};
 use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
@@ -54,10 +54,13 @@ fn wait_for(shown: &Arc<Mutex<Vec<Vec<Rgb>>>>, count: usize) -> Vec<Vec<Rgb>> {
 fn set_color_renders_solid_frame() {
     let (mock, shown) = MockOutput::new(4);
     let (tx, rx) = mpsc::channel();
-    engine::spawn(Box::new(mock), rx, 0);
+    engine::spawn(Box::new(mock), rx);
 
-    tx.send(RenderCommand::SetColor(Rgb::new(255, 0, 0)))
-        .unwrap();
+    tx.send(RenderCommand::SetColor(
+        Rgb::new(255, 0, 0),
+        TransitionSpec::INSTANT,
+    ))
+    .unwrap();
     let frames = wait_for(&shown, 1);
     assert!(
         frames
@@ -72,23 +75,25 @@ fn set_color_renders_solid_frame() {
 fn set_on_false_renders_black() {
     let (mock, shown) = MockOutput::new(4);
     let (tx, rx) = mpsc::channel();
-    engine::spawn(Box::new(mock), rx, 0);
+    engine::spawn(Box::new(mock), rx);
 
-    tx.send(RenderCommand::SetColor(Rgb::new(0, 255, 0)))
-        .unwrap();
+    tx.send(RenderCommand::SetColor(
+        Rgb::new(0, 255, 0),
+        TransitionSpec::INSTANT,
+    ))
+    .unwrap();
     wait_for(&shown, 1);
-    tx.send(RenderCommand::SetOnOff(false)).unwrap();
+    tx.send(RenderCommand::SetOnOff(false, TransitionSpec::INSTANT))
+        .unwrap();
     let frames = wait_for(&shown, 2);
     assert!(frames.last().unwrap().iter().all(|p| *p == Rgb::BLACK));
 }
 
 #[test]
 fn execute_renders_effect_frames() {
-    use engine::Effect;
-
     struct ThreeFrames;
     impl Effect for ThreeFrames {
-        fn frames(&self, pixels: &[Rgb]) -> engine::FrameIter {
+        fn frames(&self, pixels: &[Rgb]) -> FrameIter {
             let len = pixels.len();
             let colors = [
                 Rgb::new(255, 0, 0),
@@ -110,10 +115,13 @@ fn execute_renders_effect_frames() {
 
     let (mock, shown) = MockOutput::new(4);
     let (tx, rx) = mpsc::channel();
-    engine::spawn(Box::new(mock), rx, 0);
+    engine::spawn(Box::new(mock), rx);
 
-    tx.send(RenderCommand::Execute(Box::new(ThreeFrames)))
-        .unwrap();
+    tx.send(RenderCommand::Execute(
+        Box::new(ThreeFrames),
+        TransitionSpec::INSTANT,
+    ))
+    .unwrap();
     let frames = wait_for(&shown, 3);
     let expected = [
         Rgb::new(255, 0, 0),
@@ -126,7 +134,7 @@ fn execute_renders_effect_frames() {
 }
 
 #[test]
-fn crossfade_blends_first_frame_between_current_and_target() {
+fn execute_with_fade_blends_first_frame_between_current_and_target() {
     struct Solid(Rgb);
     impl Effect for Solid {
         fn frames(&self, pixels: &[Rgb]) -> FrameIter {
@@ -138,19 +146,20 @@ fn crossfade_blends_first_frame_between_current_and_target() {
 
     let (mock, shown) = MockOutput::new(2);
     let (tx, rx) = mpsc::channel();
-    // Use 4 crossfade frames so the first rendered frame is a blend
-    engine::spawn(Box::new(mock), rx, 4);
+    engine::spawn(Box::new(mock), rx);
 
-    // Set current pixels to white
-    tx.send(RenderCommand::SetColor(Rgb::new(255, 255, 255)))
-        .unwrap();
+    tx.send(RenderCommand::SetColor(
+        Rgb::new(255, 255, 255),
+        TransitionSpec::INSTANT,
+    ))
+    .unwrap();
     wait_for(&shown, 1);
 
-    // Crossfade to black over 4 frames; first blended frame should be grey-ish
-    tx.send(RenderCommand::Execute(Box::new(Solid(Rgb::BLACK))))
+    // 4-frame fade from white to black (4 * 16ms = 64ms)
+    let fade = TransitionSpec::new(64, TransitionCurve::Linear);
+    tx.send(RenderCommand::Execute(Box::new(Solid(Rgb::BLACK)), fade))
         .unwrap();
     let frames = wait_for(&shown, 2);
     let blended = &frames[1];
-    // First frame of crossfade: t = 1/4 → should be darker than white but not black
     assert!(blended[0].r < 255 && blended[0].r > 0);
 }

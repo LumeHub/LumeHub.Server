@@ -2,11 +2,11 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use application::StateEventBus;
-use domain::{BlendMode, ParamDef, ParamValue, Rgb};
+use domain::{BlendMode, ParamDef, ParamValue, Rgb, TransitionSpec};
 use effects::composite::CompositeEffect;
 use effects::scene_builder::LayerSpec;
 use effects::{BuiltinEffect, LiveParam, build_composite};
-use engine::{EffectQueue, RenderCommand};
+use engine::EffectQueue;
 use persistence::PersistedState;
 use store::{LayerRecord, Store, ZoneRecord};
 use tokio::sync::watch;
@@ -32,10 +32,11 @@ pub(super) struct SceneReload {
     primary_color: Arc<LiveParam<Rgb>>,
     strip_len: usize,
     brightness_val: f32,
+    spec: TransitionSpec,
 }
 
 impl SceneReload {
-    pub(super) fn from_runtime(rt: &RenderTaskRuntime) -> Self {
+    pub(super) fn from_runtime(rt: &RenderTaskRuntime, spec: TransitionSpec) -> Self {
         let brightness_val = {
             let s = rt.state.lock().unwrap();
             if s.on { s.brightness as f32 } else { 0.0 }
@@ -50,6 +51,7 @@ impl SceneReload {
             primary_color: Arc::clone(&rt.primary_color),
             strip_len: rt.strip_len,
             brightness_val,
+            spec,
         }
     }
 
@@ -90,7 +92,7 @@ impl SceneReload {
         let (snapshot, persisted) = {
             let mut s = self.state.lock().unwrap();
             s.scene = ActiveScene::Idle;
-            self.queue.send(RenderCommand::Halt);
+            self.queue.halt();
             (build_snapshot(&s), extract_persisted(&s))
         };
         self.emit(snapshot, persisted);
@@ -102,7 +104,7 @@ impl SceneReload {
             s.scene = ActiveScene::Running { brightness };
             (build_snapshot(&s), extract_persisted(&s))
         };
-        self.queue.enqueue(Box::new(composite));
+        self.queue.enqueue_with(Box::new(composite), self.spec);
         self.emit(snapshot, persisted);
     }
 

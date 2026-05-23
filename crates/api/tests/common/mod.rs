@@ -1,19 +1,22 @@
 use std::sync::Arc;
 
 use application::{SceneRuntime, SceneSnapshot};
-use domain::Rgb;
+use domain::{Rgb, TransitionSpec};
 use sqlx::sqlite::SqlitePoolOptions;
 use store::Store;
 
 pub struct MockRuntime;
 
 impl SceneRuntime for MockRuntime {
-    fn set_color(&self, _: Rgb) {}
-    fn set_brightness(&self, _: u8) {}
-    fn set_on_off(&self, _: bool) {}
+    fn default_spec(&self) -> TransitionSpec {
+        TransitionSpec::INSTANT
+    }
+    fn set_color_with(&self, _: Rgb, _: TransitionSpec) {}
+    fn set_brightness_with(&self, _: u8, _: TransitionSpec) {}
+    fn set_on_off_with(&self, _: bool, _: TransitionSpec) {}
     fn halt(&self) {}
     fn stop_effect(&self) {}
-    fn reload_active(&self) {}
+    fn reload_active_with(&self, _: TransitionSpec) {}
     fn snapshot(&self) -> SceneSnapshot {
         SceneSnapshot {
             on: true,
