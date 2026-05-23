@@ -6,6 +6,10 @@ freq_hz = 1000000
 latch_time_micros = 500
 crossfade_ms = 300
 
+[transitions]
+default_fade_ms = 300
+default_curve = "ease_in_out"
+
 [server]
 ip_address = "127.0.0.1"
 port = 5000
