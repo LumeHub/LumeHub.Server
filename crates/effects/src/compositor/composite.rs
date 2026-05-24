@@ -91,21 +91,23 @@ fn blend_layer(
 }
 
 fn blend_pixel(base: Rgb, overlay: Rgb, mode: BlendMode, opacity: f32) -> Rgb {
-    let o = overlay.dim(opacity);
-    match mode {
-        BlendMode::Override => base.lerp(o, opacity),
-        BlendMode::Add => base + o,
+    // Each blend mode produces a fully-blended pixel at opacity=1.0; opacity
+    // then lerps between base (no effect) and the blended result.
+    let blended = match mode {
+        BlendMode::Override => overlay,
+        BlendMode::Add => base + overlay,
         BlendMode::Screen => Rgb {
-            r: 255 - ((255 - base.r as u16) * (255 - o.r as u16) / 255) as u8,
-            g: 255 - ((255 - base.g as u16) * (255 - o.g as u16) / 255) as u8,
-            b: 255 - ((255 - base.b as u16) * (255 - o.b as u16) / 255) as u8,
+            r: 255 - ((255 - base.r as u16) * (255 - overlay.r as u16) / 255) as u8,
+            g: 255 - ((255 - base.g as u16) * (255 - overlay.g as u16) / 255) as u8,
+            b: 255 - ((255 - base.b as u16) * (255 - overlay.b as u16) / 255) as u8,
         },
         BlendMode::Multiply => Rgb {
-            r: (base.r as u16 * o.r as u16 / 255) as u8,
-            g: (base.g as u16 * o.g as u16 / 255) as u8,
-            b: (base.b as u16 * o.b as u16 / 255) as u8,
+            r: (base.r as u16 * overlay.r as u16 / 255) as u8,
+            g: (base.g as u16 * overlay.g as u16 / 255) as u8,
+            b: (base.b as u16 * overlay.b as u16 / 255) as u8,
         },
-    }
+    };
+    base.lerp(blended, opacity)
 }
 
 fn pixel_opacity(zone: &ZoneGradient, strip_px: usize, strip_len: usize) -> f32 {
