@@ -2,6 +2,8 @@ use std::sync::Arc;
 
 use domain::{BlendMode, Rgb};
 
+use super::live_param::LiveParam;
+
 pub trait LayerEffect: Send + Sync + 'static {
     fn render(&self, len: usize) -> Vec<Rgb>;
 }
@@ -40,4 +42,5 @@ pub struct CompositeLayer {
     pub effect: Arc<dyn LayerEffect>,
     pub mode: BlendMode,
     pub zone: ZoneGradient,
+    pub opacity: Arc<LiveParam<f32>>,
 }

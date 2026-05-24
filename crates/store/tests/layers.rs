@@ -141,6 +141,48 @@ async fn reorder_layers() {
 }
 
 #[tokio::test]
+async fn add_layer_defaults_opacity_to_one() {
+    let store = helpers::in_memory_store().await;
+    let effect = store.create_effect("fx", "code", &[]).await.unwrap();
+    let zone = store.create_zone("z", 0, 10, 4).await.unwrap();
+    let scene = store.create_scene("s").await.unwrap();
+    let layer = store
+        .add_layer(
+            &scene.id,
+            &effect.id,
+            &zone.id,
+            BlendMode::Override,
+            &[].into(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(layer.opacity, 1.0);
+}
+
+#[tokio::test]
+async fn replace_active_layers_persists_opacity() {
+    use store::NewLayer;
+    let store = helpers::in_memory_store().await;
+    let effect = store.create_effect("fx", "code", &[]).await.unwrap();
+    let zone = store.create_zone("z", 0, 10, 4).await.unwrap();
+
+    store
+        .replace_active_layers(&[NewLayer {
+            effect_id: effect.id.clone(),
+            zone_id: zone.id.clone(),
+            blend_mode: BlendMode::Override,
+            params: [].into(),
+            opacity: 0.42,
+        }])
+        .await
+        .unwrap();
+
+    let layers = store.get_active_layers().await.unwrap();
+    assert_eq!(layers.len(), 1);
+    assert!((layers[0].opacity - 0.42).abs() < 1e-5);
+}
+
+#[tokio::test]
 async fn deleting_scene_cascades_to_layers() {
     let store = helpers::in_memory_store().await;
     let effect = store.create_effect("fx", "code", &[]).await.unwrap();

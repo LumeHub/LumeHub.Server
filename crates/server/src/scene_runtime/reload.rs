@@ -20,6 +20,7 @@ type LayerSpecData = (
     HashMap<String, ParamValue>,
     BlendMode,
     ZoneRecord,
+    f32,
 );
 
 pub(super) struct SceneReload {
@@ -139,7 +140,14 @@ impl SceneReload {
     async fn resolve_one(&self, layer: &LayerRecord) -> Option<LayerSpecData> {
         let (script, defs) = self.resolve_effect(&layer.effect_id).await?;
         let zone = self.resolve_zone(&layer.zone_id).await?;
-        Some((script, defs, layer.params.clone(), layer.blend_mode, zone))
+        Some((
+            script,
+            defs,
+            layer.params.clone(),
+            layer.blend_mode,
+            zone,
+            layer.opacity,
+        ))
     }
 
     async fn resolve_effect(&self, effect_id: &str) -> Option<(String, Vec<ParamDef>)> {
@@ -174,7 +182,7 @@ impl SceneReload {
 
 fn to_layer_specs(data: &[LayerSpecData]) -> Vec<LayerSpec<'_>> {
     data.iter()
-        .map(|(script, defs, params, mode, zone)| LayerSpec {
+        .map(|(script, defs, params, mode, zone, opacity)| LayerSpec {
             script: script.as_str(),
             param_defs: defs.as_slice(),
             params,
@@ -182,6 +190,7 @@ fn to_layer_specs(data: &[LayerSpecData]) -> Vec<LayerSpec<'_>> {
             zone_start: zone.start_pixel as usize,
             zone_end: zone.end_pixel as usize,
             zone_transition: zone.transition_length as usize,
+            opacity: *opacity,
         })
         .collect()
 }

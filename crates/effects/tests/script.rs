@@ -15,6 +15,7 @@ fn render(code: &str, len: usize) -> Vec<Rgb> {
         zone_start: 0,
         zone_end: len,
         zone_transition: 0,
+        opacity: 1.0,
     }];
     let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
     let primary = Arc::new(LiveParam::new(Rgb::BLACK, f32::MAX));
@@ -33,6 +34,7 @@ fn script_compile_error_returns_err() {
         zone_start: 0,
         zone_end: 4,
         zone_transition: 0,
+        opacity: 1.0,
     }];
     let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
     let primary = Arc::new(LiveParam::new(Rgb::BLACK, f32::MAX));
@@ -115,6 +117,7 @@ fn render_with_primary(
         zone_start: 0,
         zone_end: len,
         zone_transition: 0,
+        opacity: 1.0,
     }];
     let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
     let composite = build_composite(&specs, len, brightness, primary).unwrap();
@@ -146,6 +149,7 @@ fn device_color_param_updates_when_primary_changes() {
         zone_start: 0,
         zone_end: 1,
         zone_transition: 0,
+        opacity: 1.0,
     }];
     let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
     let composite = build_composite(&specs, 1, brightness, Arc::clone(&primary)).unwrap();

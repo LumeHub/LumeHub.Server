@@ -1,0 +1,1 @@
+ALTER TABLE scene_layers ADD COLUMN opacity REAL NOT NULL DEFAULT 1.0;

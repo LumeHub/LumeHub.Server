@@ -15,18 +15,22 @@ pub struct CompositeEffect {
 impl Effect for CompositeEffect {
     fn frames(&self, pixels: &[Rgb]) -> Box<dyn Iterator<Item = Vec<Rgb>> + Send + 'static> {
         let strip_len = pixels.len();
-        let layers = cull_layers(&self.layers, strip_len);
+        let layers = self.layers.clone();
         let brightness = Arc::clone(&self.brightness);
         let primary_color = Arc::clone(&self.primary_color);
 
         Box::new(std::iter::from_fn(move || {
             brightness.tick();
             primary_color.tick();
-            let frame = layers
+            for layer in &layers {
+                layer.opacity.tick();
+            }
+            let first = first_visible_layer(&layers, strip_len);
+            let frame = layers[first..]
                 .iter()
                 .fold(vec![Rgb::BLACK; strip_len], |base, layer| {
                     let overlay = layer.effect.render(layer.zone.zone_len());
-                    blend_layer(base, &overlay, layer.mode, &layer.zone)
+                    blend_layer(base, &overlay, layer.mode, &layer.zone, layer.opacity.get())
                 });
             let b = brightness.get() as u8;
             Some(frame.into_iter().map(|c| c.with_brightness(b)).collect())
@@ -34,8 +38,8 @@ impl Effect for CompositeEffect {
     }
 }
 
-fn cull_layers(layers: &[CompositeLayer], strip_len: usize) -> Vec<CompositeLayer> {
-    let first_visible = layers
+fn first_visible_layer(layers: &[CompositeLayer], strip_len: usize) -> usize {
+    layers
         .iter()
         .enumerate()
         .rev()
@@ -44,14 +48,20 @@ fn cull_layers(layers: &[CompositeLayer], strip_len: usize) -> Vec<CompositeLaye
                 && l.zone.start_pixel == 0
                 && l.zone.end_pixel >= strip_len
                 && l.zone.transition_length == 0
+                && l.opacity.get() >= 1.0
         })
         .map(|(i, _)| i)
-        .unwrap_or(0);
-    layers[first_visible..].to_vec()
+        .unwrap_or(0)
 }
 
-fn blend_layer(base: Vec<Rgb>, overlay: &[Rgb], mode: BlendMode, zone: &ZoneGradient) -> Vec<Rgb> {
-    if overlay.is_empty() {
+fn blend_layer(
+    base: Vec<Rgb>,
+    overlay: &[Rgb],
+    mode: BlendMode,
+    zone: &ZoneGradient,
+    layer_opacity: f32,
+) -> Vec<Rgb> {
+    if overlay.is_empty() || layer_opacity <= 0.0 {
         return base;
     }
     let strip_len = base.len();
@@ -72,7 +82,7 @@ fn blend_layer(base: Vec<Rgb>, overlay: &[Rgb], mode: BlendMode, zone: &ZoneGrad
                         base_px,
                         overlay[idx],
                         mode,
-                        pixel_opacity(zone, strip_px, strip_len),
+                        pixel_opacity(zone, strip_px, strip_len) * layer_opacity,
                     )
                 }
             },

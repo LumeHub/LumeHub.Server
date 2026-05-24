@@ -32,6 +32,10 @@ pub async fn clear_active_scene(
     Ok(HttpResponse::NoContent().finish())
 }
 
+fn default_opacity() -> f32 {
+    1.0
+}
+
 #[derive(Deserialize)]
 struct AddLayerRequest {
     effect_id: String,
@@ -40,6 +44,8 @@ struct AddLayerRequest {
     blend_mode: BlendMode,
     #[serde(default)]
     params: HashMap<String, ParamValue>,
+    #[serde(default = "default_opacity")]
+    opacity: f32,
 }
 
 impl From<AddLayerRequest> for NewLayer {
@@ -49,6 +55,7 @@ impl From<AddLayerRequest> for NewLayer {
             zone_id: r.zone_id,
             blend_mode: r.blend_mode,
             params: r.params,
+            opacity: r.opacity,
         }
     }
 }

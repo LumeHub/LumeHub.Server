@@ -30,7 +30,7 @@ pub async fn replace_active_layers(
 
     if !entries.is_empty() {
         sqlx::QueryBuilder::new(
-            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position) ",
+            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity) ",
         )
         .push_values(&entries, |mut b, (id, layer, params, pos)| {
             b.push_bind(id.as_str())
@@ -40,7 +40,8 @@ pub async fn replace_active_layers(
                 .push_bind(blend_mode_to_str(layer.blend_mode))
                 .push_bind(params.as_str())
                 .push_bind(1i64)
-                .push_bind(*pos);
+                .push_bind(*pos)
+                .push_bind(layer.opacity as f64);
         })
         .build()
         .execute(&mut *tx)
@@ -95,7 +96,7 @@ pub async fn restore_active_from_stack(
 
     if !entries.is_empty() {
         sqlx::QueryBuilder::new(
-            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position) ",
+            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity) ",
         )
         .push_values(&entries, |mut b, (id, layer, params, pos)| {
             b.push_bind(id.as_str())
@@ -105,7 +106,8 @@ pub async fn restore_active_from_stack(
                 .push_bind(blend_mode_to_str(layer.blend_mode))
                 .push_bind(params.as_str())
                 .push_bind(layer.enabled as i64)
-                .push_bind(*pos);
+                .push_bind(*pos)
+                .push_bind(layer.opacity as f64);
         })
         .build()
         .execute(&mut *tx)

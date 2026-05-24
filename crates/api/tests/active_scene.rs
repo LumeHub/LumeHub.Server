@@ -174,6 +174,43 @@ async fn save_and_load() {
 }
 
 #[actix_web::test]
+async fn put_scene_round_trips_opacity() {
+    let svc = svc!(make_store().await);
+
+    let resp = test::call_service(
+        &svc,
+        TestRequest::put()
+            .uri("/scenes/active")
+            .set_json(json!([
+                {"effect_id": "builtin:rainbow", "zone_id": "all", "opacity": 0.25},
+                {"effect_id": "builtin:aurora", "zone_id": "all"}
+            ]))
+            .to_request(),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: Vec<Value> = test::read_body_json(resp).await;
+    assert_eq!(body[0]["opacity"].as_f64().unwrap(), 0.25);
+    assert_eq!(body[1]["opacity"].as_f64().unwrap(), 1.0);
+}
+
+#[actix_web::test]
+async fn added_layer_response_includes_default_opacity() {
+    let svc = svc!(make_store().await);
+
+    let resp = test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/layers")
+            .set_json(json!({"effect_id": "builtin:rainbow", "zone_id": "all"}))
+            .to_request(),
+    )
+    .await;
+    let body: Value = test::read_body_json(resp).await;
+    assert_eq!(body["opacity"].as_f64().unwrap(), 1.0);
+}
+
+#[actix_web::test]
 async fn load_nonexistent_returns_404() {
     let svc = svc!(make_store().await);
 

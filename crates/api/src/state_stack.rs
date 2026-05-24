@@ -40,6 +40,7 @@ pub async fn push_state(
             blend_mode: l.blend_mode,
             enabled: l.enabled,
             params: l.params,
+            opacity: l.opacity,
         })
         .collect();
 

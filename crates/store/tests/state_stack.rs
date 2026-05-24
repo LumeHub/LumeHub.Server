@@ -11,6 +11,7 @@ fn sample_layers() -> Vec<StackLayer> {
         blend_mode: BlendMode::Override,
         enabled: true,
         params: Default::default(),
+        opacity: 1.0,
     }]
 }
 
@@ -53,6 +54,7 @@ async fn pop_returns_last_pushed_entry() {
         blend_mode: BlendMode::Add,
         enabled: false,
         params: Default::default(),
+        opacity: 0.75,
     }];
     let device_b = StackDevice {
         on: false,

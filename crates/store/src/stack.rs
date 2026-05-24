@@ -16,6 +16,12 @@ pub struct StackLayer {
     #[serde(default)]
     pub enabled: bool,
     pub params: HashMap<String, ParamValue>,
+    #[serde(default = "default_opacity")]
+    pub opacity: f32,
+}
+
+fn default_opacity() -> f32 {
+    1.0
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
