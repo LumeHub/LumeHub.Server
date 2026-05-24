@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 
 use application::StateEventBus;
@@ -6,7 +6,7 @@ use domain::{BlendMode, ParamDef, ParamValue, Rgb, TransitionSpec};
 use effects::composite::CompositeEffect;
 use effects::scene_builder::LayerSpec;
 use effects::{BuiltinEffect, LiveParam, build_composite};
-use engine::EffectQueue;
+use engine::{EffectQueue, FRAME_DURATION_MS};
 use persistence::PersistedState;
 use store::{LayerRecord, Store, ZoneRecord};
 use tokio::sync::watch;
@@ -20,7 +20,7 @@ type LayerSpecData = (
     HashMap<String, ParamValue>,
     BlendMode,
     ZoneRecord,
-    f32,
+    Arc<LiveParam<f32>>,
 );
 
 pub(super) struct SceneReload {
@@ -34,6 +34,7 @@ pub(super) struct SceneReload {
     strip_len: usize,
     brightness_val: f32,
     spec: TransitionSpec,
+    live_opacities: Arc<Mutex<HashMap<String, Arc<LiveParam<f32>>>>>,
 }
 
 impl SceneReload {
@@ -53,6 +54,7 @@ impl SceneReload {
             strip_len: rt.strip_len,
             brightness_val,
             spec,
+            live_opacities: Arc::clone(&rt.live_opacities),
         }
     }
 
@@ -62,11 +64,14 @@ impl SceneReload {
 
     async fn run(self) {
         let Some(enabled) = self.enabled_layers().await else {
+            self.gc_opacities(&HashSet::new());
             self.go_idle();
             return;
         };
 
+        let kept_ids: HashSet<String> = enabled.iter().map(|l| l.id.clone()).collect();
         let specs_data = self.resolve_specs(&enabled).await;
+        self.gc_opacities(&kept_ids);
         if specs_data.is_empty() {
             self.go_idle();
             return;
@@ -140,14 +145,35 @@ impl SceneReload {
     async fn resolve_one(&self, layer: &LayerRecord) -> Option<LayerSpecData> {
         let (script, defs) = self.resolve_effect(&layer.effect_id).await?;
         let zone = self.resolve_zone(&layer.zone_id).await?;
+        let opacity = self.live_opacity_for(&layer.id, layer.opacity);
         Some((
             script,
             defs,
             layer.params.clone(),
             layer.blend_mode,
             zone,
-            layer.opacity,
+            opacity,
         ))
+    }
+
+    fn live_opacity_for(&self, layer_id: &str, target: f32) -> Arc<LiveParam<f32>> {
+        let frames = self.spec.frames(FRAME_DURATION_MS).max(1) as f32;
+        let speed = (1.0 / frames).max(f32::EPSILON);
+        let mut map = self.live_opacities.lock().unwrap();
+        let lp = map
+            .entry(layer_id.to_string())
+            .or_insert_with(|| Arc::new(LiveParam::new(0.0, speed)))
+            .clone();
+        lp.set_speed(speed);
+        lp.set(target);
+        lp
+    }
+
+    fn gc_opacities(&self, kept_ids: &HashSet<String>) {
+        self.live_opacities
+            .lock()
+            .unwrap()
+            .retain(|id, _| kept_ids.contains(id));
     }
 
     async fn resolve_effect(&self, effect_id: &str) -> Option<(String, Vec<ParamDef>)> {
@@ -190,7 +216,7 @@ fn to_layer_specs(data: &[LayerSpecData]) -> Vec<LayerSpec<'_>> {
             zone_start: zone.start_pixel as usize,
             zone_end: zone.end_pixel as usize,
             zone_transition: zone.transition_length as usize,
-            opacity: *opacity,
+            opacity: Arc::clone(opacity),
         })
         .collect()
 }

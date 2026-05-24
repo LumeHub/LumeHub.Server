@@ -17,7 +17,7 @@ pub struct LayerSpec<'a> {
     pub zone_start: usize,
     pub zone_end: usize,
     pub zone_transition: usize,
-    pub opacity: f32,
+    pub opacity: Arc<LiveParam<f32>>,
 }
 
 pub fn build_composite(
@@ -50,7 +50,7 @@ pub fn build_composite(
                     end_pixel: spec.zone_end,
                     transition_length: spec.zone_transition,
                 },
-                opacity: Arc::new(LiveParam::new(spec.opacity, f32::MAX)),
+                opacity: Arc::clone(&spec.opacity),
             })
         })
         .collect::<Result<Vec<_>, EffectError>>()?;

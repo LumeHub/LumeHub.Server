@@ -28,6 +28,7 @@ pub struct RenderTaskRuntime {
     pub(crate) builtins: Arc<HashMap<String, BuiltinEffect>>,
     pub(crate) primary_color: Arc<LiveParam<Rgb>>,
     pub(crate) strip_len: usize,
+    pub(crate) live_opacities: Arc<Mutex<HashMap<String, Arc<LiveParam<f32>>>>>,
 }
 
 impl RenderTaskRuntime {
@@ -55,6 +56,7 @@ impl RenderTaskRuntime {
             builtins: Arc::new(builtins.into_iter().map(|b| (b.id(), b)).collect()),
             primary_color: Arc::new(LiveParam::new(initial.color, color_speed)),
             strip_len,
+            live_opacities: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
