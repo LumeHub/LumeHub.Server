@@ -170,6 +170,27 @@ pub async fn update_layer(
     get_layer(pool, id).await
 }
 
+pub async fn update_layer_opacity(
+    pool: &SqlitePool,
+    id: &str,
+    scene_id: &str,
+    opacity: f32,
+) -> Result<LayerRecord, StoreError> {
+    let rows_affected =
+        sqlx::query("UPDATE scene_layers SET opacity = ? WHERE id = ? AND scene_id = ?")
+            .bind(opacity as f64)
+            .bind(id)
+            .bind(scene_id)
+            .execute(pool)
+            .await?
+            .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(StoreError::NotFound);
+    }
+    get_layer(pool, id).await
+}
+
 pub async fn remove_layer(pool: &SqlitePool, id: &str, scene_id: &str) -> Result<(), StoreError> {
     let rows_affected = sqlx::query("DELETE FROM scene_layers WHERE id = ? AND scene_id = ?")
         .bind(id)

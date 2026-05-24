@@ -188,6 +188,13 @@ impl Store {
     pub async fn remove_active_layer(&self, id: &str) -> Result<(), StoreError> {
         scene::remove_layer(&self.pool, id, ACTIVE_SCENE_ID).await
     }
+    pub async fn update_active_layer_opacity(
+        &self,
+        id: &str,
+        opacity: f32,
+    ) -> Result<LayerRecord, StoreError> {
+        scene::update_layer_opacity(&self.pool, id, ACTIVE_SCENE_ID, opacity).await
+    }
     pub async fn reorder_layers(
         &self,
         scene_id: &str,

@@ -104,6 +104,7 @@ struct PatchLayerRequest {
     enabled: Option<bool>,
     blend_mode: Option<BlendMode>,
     params: Option<HashMap<String, ParamValue>>,
+    opacity: Option<f32>,
 }
 
 #[patch("/scenes/active/layers/{id}")]
@@ -120,9 +121,13 @@ pub async fn patch_layer(
     let enabled = body.enabled.unwrap_or(current.enabled);
     let blend_mode = body.blend_mode.unwrap_or(current.blend_mode);
     let params = body.params.clone().unwrap_or(current.params);
-    let layer = store
+    store
         .update_active_layer(&id, zone_id, enabled, blend_mode, &params)
         .await?;
+    if let Some(opacity) = body.opacity {
+        store.update_active_layer_opacity(&id, opacity).await?;
+    }
+    let layer = store.get_active_layer(&id).await?;
     runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::Ok().json(LayerResponse::from(layer)))
 }
@@ -134,8 +139,31 @@ pub async fn remove_layer(
     query: web::Query<TransitionQuery>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
-    store.remove_active_layer(&path.into_inner()).await?;
-    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
+    let id = path.into_inner();
+    let spec = query.into_inner().resolve(runtime.as_ref());
+
+    if spec.is_instant() {
+        store.remove_active_layer(&id).await?;
+        runtime.reload_active_with(spec);
+        return Ok(HttpResponse::NoContent().finish());
+    }
+
+    // Fade-out: tween opacity to 0 in-place, then drop the row once the
+    // visible fade is done. Reload runs immediately so the LiveParam picks
+    // up the new target; the cleanup reload uses INSTANT to avoid stacking
+    // another scene crossfade on top of a layer that has already faded out.
+    store.update_active_layer_opacity(&id, 0.0).await?;
+    runtime.reload_active_with(spec);
+
+    let store = store.into_inner();
+    let runtime: Arc<dyn SceneRuntime> = web::Data::clone(&runtime).into_inner();
+    let fade_ms = spec.duration_ms as u64;
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(fade_ms)).await;
+        let _ = store.remove_active_layer(&id).await;
+        runtime.reload_active_with(domain::TransitionSpec::INSTANT);
+    });
+
     Ok(HttpResponse::NoContent().finish())
 }
 

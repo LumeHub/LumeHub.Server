@@ -211,6 +211,114 @@ async fn added_layer_response_includes_default_opacity() {
 }
 
 #[actix_web::test]
+async fn patch_layer_opacity_updates_db() {
+    let svc = svc!(make_store().await);
+
+    let resp = test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/layers")
+            .set_json(json!({"effect_id": "builtin:rainbow", "zone_id": "all"}))
+            .to_request(),
+    )
+    .await;
+    let id = test::read_body_json::<Value, _>(resp).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let resp = test::call_service(
+        &svc,
+        TestRequest::patch()
+            .uri(&format!("/scenes/active/layers/{id}?fade_ms=200"))
+            .set_json(json!({"opacity": 0.4}))
+            .to_request(),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: Value = test::read_body_json(resp).await;
+    assert!((body["opacity"].as_f64().unwrap() - 0.4).abs() < 1e-5);
+
+    let resp =
+        test::call_service(&svc, TestRequest::get().uri("/scenes/active").to_request()).await;
+    let body: Vec<Value> = test::read_body_json(resp).await;
+    assert!((body[0]["opacity"].as_f64().unwrap() - 0.4).abs() < 1e-5);
+}
+
+#[actix_web::test]
+async fn delete_layer_with_fade_keeps_row_until_after_fade() {
+    let svc = svc!(make_store().await);
+    let resp = test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/layers")
+            .set_json(json!({"effect_id": "builtin:rainbow", "zone_id": "all"}))
+            .to_request(),
+    )
+    .await;
+    let id = test::read_body_json::<Value, _>(resp).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    let resp = test::call_service(
+        &svc,
+        TestRequest::delete()
+            .uri(&format!("/scenes/active/layers/{id}?fade_ms=150"))
+            .to_request(),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    // Immediately after DELETE: row still exists, opacity has been set to 0.
+    let resp =
+        test::call_service(&svc, TestRequest::get().uri("/scenes/active").to_request()).await;
+    let body: Vec<Value> = test::read_body_json(resp).await;
+    assert_eq!(body.len(), 1, "layer should remain during fade-out");
+    assert_eq!(body[0]["opacity"].as_f64().unwrap(), 0.0);
+
+    // After the fade window: row gone.
+    tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+    let resp =
+        test::call_service(&svc, TestRequest::get().uri("/scenes/active").to_request()).await;
+    let body: Vec<Value> = test::read_body_json(resp).await;
+    assert!(
+        body.is_empty(),
+        "layer should be deleted after fade completes"
+    );
+}
+
+#[actix_web::test]
+async fn delete_layer_without_fade_drops_row_immediately() {
+    let svc = svc!(make_store().await);
+    let resp = test::call_service(
+        &svc,
+        TestRequest::post()
+            .uri("/scenes/active/layers")
+            .set_json(json!({"effect_id": "builtin:rainbow", "zone_id": "all"}))
+            .to_request(),
+    )
+    .await;
+    let id = test::read_body_json::<Value, _>(resp).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+
+    test::call_service(
+        &svc,
+        TestRequest::delete()
+            .uri(&format!("/scenes/active/layers/{id}"))
+            .to_request(),
+    )
+    .await;
+
+    let resp =
+        test::call_service(&svc, TestRequest::get().uri("/scenes/active").to_request()).await;
+    let body: Vec<Value> = test::read_body_json(resp).await;
+    assert!(body.is_empty());
+}
+
+#[actix_web::test]
 async fn load_nonexistent_returns_404() {
     let svc = svc!(make_store().await);
 

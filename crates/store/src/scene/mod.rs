@@ -10,6 +10,6 @@ pub use active::{
 };
 pub use layers::{
     LayerRecord, NewLayer, add_layer, clear_layers, get_layer, get_layer_in_scene, get_layers,
-    remove_layer, reorder_layers, update_layer,
+    remove_layer, reorder_layers, update_layer, update_layer_opacity,
 };
 pub use scenes::{SceneRecord, create, delete, get_all, get_one, update};
