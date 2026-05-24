@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use domain::ParamValue;
 use sqlx::sqlite::SqlitePoolOptions;
 use store::Store;

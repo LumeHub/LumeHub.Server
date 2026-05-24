@@ -118,7 +118,9 @@ async fn main() -> std::io::Result<()> {
             .configure(api::effects::config)
             .configure(api::events::config)
             .configure(api::zones::config)
-            // active_scene must precede scenes: /scenes/active must match before /scenes/{id}
+            // state_stack and active_scene must precede scenes: /scenes/active/* must
+            // match before the wildcard /scenes/{id}
+            .configure(api::state_stack::config)
             .configure(api::active_scene::config)
             .configure(api::scenes::config)
             .configure(api_legacy::config);

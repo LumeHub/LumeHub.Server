@@ -1,9 +1,11 @@
 mod effect;
 mod scene;
+pub mod stack;
 mod zone;
 
 pub use effect::EffectRecord;
 pub use scene::{ACTIVE_SCENE_ID, LayerRecord, NewLayer, SceneRecord};
+pub use stack::{StackDevice, StackEntry, StackLayer};
 pub use zone::ZoneRecord;
 
 use std::path::Path;
@@ -235,5 +237,32 @@ impl Store {
     }
     pub async fn overwrite_scene_from_active(&self, id: &str) -> Result<(), StoreError> {
         scene::overwrite_from_active(&self.pool, id).await
+    }
+
+    pub async fn restore_active_from_stack(&self, layers: &[StackLayer]) -> Result<(), StoreError> {
+        scene::restore_active_from_stack(&self.pool, layers).await
+    }
+
+    pub async fn push_state(
+        &self,
+        layers: &[StackLayer],
+        device: &StackDevice,
+    ) -> Result<(), StoreError> {
+        stack::push(&self.pool, layers, device).await
+    }
+    pub async fn pop_state(&self) -> Result<Option<StackEntry>, StoreError> {
+        stack::pop(&self.pool).await
+    }
+    pub async fn peek_state(&self) -> Result<Option<StackEntry>, StoreError> {
+        stack::peek(&self.pool).await
+    }
+    pub async fn list_state_stack(&self) -> Result<Vec<StackEntry>, StoreError> {
+        stack::list(&self.pool).await
+    }
+    pub async fn state_stack_depth(&self) -> Result<u32, StoreError> {
+        stack::depth(&self.pool).await
+    }
+    pub async fn clear_state_stack(&self) -> Result<(), StoreError> {
+        stack::clear(&self.pool).await
     }
 }
