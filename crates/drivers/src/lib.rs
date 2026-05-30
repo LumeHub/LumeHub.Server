@@ -2,9 +2,11 @@ use domain::Rgb;
 use serde::{Deserialize, Serialize};
 
 mod console;
+mod sk6812;
 mod ws2801;
 
 pub use console::Console;
+pub use sk6812::{Sk6812, Sk6812Rgbw, encode_grb, encode_grbw};
 pub use ws2801::Ws2801;
 
 macro_rules! impl_pixel_access {
@@ -27,6 +29,8 @@ use impl_pixel_access;
 #[serde(rename_all = "lowercase")]
 pub enum ControllerType {
     Console,
+    Sk6812,
+    Sk6812Rgbw,
     Ws2801,
 }
 
@@ -70,6 +74,8 @@ impl engine::Output for Box<dyn Controller> {
 pub fn create(config: &DriverConfig) -> Result<Box<dyn Controller>, std::io::Error> {
     match config.controller_type {
         ControllerType::Console => Ok(Box::new(Console::new(config.pixel_count))),
+        ControllerType::Sk6812 => Ok(Box::new(Sk6812::new(config)?)),
+        ControllerType::Sk6812Rgbw => Ok(Box::new(Sk6812Rgbw::new(config)?)),
         ControllerType::Ws2801 => Ok(Box::new(Ws2801::new(config)?)),
     }
 }
