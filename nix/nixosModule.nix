@@ -79,6 +79,25 @@
 
             settings = ../config/default.toml |> readFile |> fromTOML |> mapOptions;
 
+            mqtt = {
+                username = mkOption {
+                    type = types.str;
+                    default = "";
+                    description = "MQTT broker username. Leave empty for no authentication.";
+                };
+                passwordFile = mkOption {
+                    type = types.nullOr types.path;
+                    default = null;
+                    description = ''
+                        Path to a file containing the MQTT broker password in systemd
+                        EnvironmentFile format:
+                            LUMEHUB_MQTT__PASSWORD=yourpassword
+                        The file must not be world-readable. Use agenix, sops-nix, or
+                        similar to provision it.
+                    '';
+                };
+            };
+
             extraEffects = mkOption {
                 type = types.attrsOf (types.either types.str types.path);
                 default = {};
@@ -148,11 +167,15 @@
                 description = "LumeHub LED controller server";
                 wantedBy = ["multi-user.target"];
                 after = ["network.target"];
+                environment = lib.optionalAttrs (cfg.mqtt.username != "") {
+                    LUMEHUB_MQTT__USERNAME = cfg.mqtt.username;
+                };
                 serviceConfig = {
                     Type = "simple";
                     ExecStart = "${cfg.package}/bin/lumehub-server --config ${configFile} --config-dir ${configDir} --state-dir $STATE_DIRECTORY";
                     Restart = "on-failure";
                     StateDirectory = "lumehub";
+                    EnvironmentFile = lib.optional (cfg.mqtt.passwordFile != null) cfg.mqtt.passwordFile;
                 };
             };
 

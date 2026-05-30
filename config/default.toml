@@ -17,3 +17,16 @@ name = "LumeHub"
 
 [effects]
 presets = {}
+
+[mqtt]
+enabled = false
+host = "localhost"
+port = 1883
+device_id = "lumehub"
+topic_prefix = "lumehub"
+ha_discovery = true
+ha_discovery_prefix = "homeassistant"
+# [mqtt]
+# enabled = true
+# host = "192.168.178.145"
+# port = 1883

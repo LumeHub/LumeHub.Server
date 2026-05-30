@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use clap::Parser;
 use config::{Config, ConfigError, Environment, File};
 use drivers::DriverConfig;
+use mqtt::MqttConfig;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -30,6 +31,8 @@ pub struct Settings {
     pub led_controller: LedControllerConfig,
     pub server: ServerConfig,
     pub mdns: MdnsConfig,
+    #[serde(default)]
+    pub mqtt: MqttConfig,
     #[serde(skip)]
     pub config_dir: PathBuf,
     #[serde(skip)]

@@ -28,5 +28,6 @@ serde       = { workspace = true }
 discovery   = { workspace = true }
 persistence = { workspace = true }
 store       = { workspace = true }
+mqtt        = { workspace = true }
 tokio       = { workspace = true }
 serde_json  = { workspace = true }

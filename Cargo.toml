@@ -11,6 +11,7 @@ members = [
     "crates/discovery",
     "crates/persistence",
     "crates/store",
+    "crates/mqtt",
     "crates/server",
 ]
 resolver = "2"
@@ -28,6 +29,7 @@ api-legacy  = { path = "crates/api/legacy" }
 discovery   = { path = "crates/discovery" }
 persistence = { path = "crates/persistence" }
 store       = { path = "crates/store" }
+mqtt        = { path = "crates/mqtt" }
 
 # External crates
 actix-web    = "4.11.0"

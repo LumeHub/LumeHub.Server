@@ -7,6 +7,7 @@ use actix_web::{App, HttpServer, web};
 use application::{SceneRuntime, StateEventBus};
 use effects::load_builtins;
 use engine::EffectQueue;
+use mqtt;
 use settings::Settings;
 use store::Store;
 
@@ -80,6 +81,17 @@ async fn main() -> std::io::Result<()> {
 
     // Restore active scene from __active__ on startup
     runtime.reload_active();
+
+    if app_settings.mqtt.enabled {
+        let mqtt_builtins = load_builtins();
+        mqtt::spawn(
+            app_settings.mqtt.clone(),
+            Arc::clone(&runtime),
+            Arc::clone(&store),
+            event_bus.clone(),
+            mqtt_builtins,
+        );
+    }
 
     #[cfg(feature = "google")]
     let command_dispatcher = api_google::commands::CommandDispatcher::new();
