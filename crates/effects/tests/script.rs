@@ -149,7 +149,7 @@ fn device_color_param_updates_when_primary_changes() {
     }];
     let brightness = Arc::new(LiveParam::new(255.0f32, f32::MAX));
     let composite = build_composite(&specs, 1, brightness, Arc::clone(&primary)).unwrap();
-    let mut frames = composite.frames(&vec![Rgb::BLACK; 1]);
+    let mut frames = composite.frames(&[Rgb::BLACK; 1]);
 
     assert_eq!(frames.next().unwrap()[0], Rgb::new(255, 0, 0));
 

@@ -7,7 +7,6 @@ use actix_web::{App, HttpServer, web};
 use application::{SceneRuntime, StateEventBus};
 use effects::load_builtins;
 use engine::EffectQueue;
-use mqtt;
 use settings::Settings;
 use store::Store;
 
