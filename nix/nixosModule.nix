@@ -166,7 +166,8 @@
             systemd.services.lumehub = {
                 description = "LumeHub LED controller server";
                 wantedBy = ["multi-user.target"];
-                after = ["network.target"];
+                wants = ["network-online.target"];
+                after = ["network-online.target"];
                 environment = lib.optionalAttrs (cfg.mqtt.username != "") {
                     LUMEHUB_MQTT__USERNAME = cfg.mqtt.username;
                 };
