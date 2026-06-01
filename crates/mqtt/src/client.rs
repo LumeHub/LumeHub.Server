@@ -47,6 +47,7 @@ pub async fn run(
         let mut opts = MqttOptions::new(&client_id, &config.host, config.port);
         opts.set_keep_alive(Duration::from_secs(60));
         opts.set_clean_session(true);
+        opts.set_max_packet_size(1024 * 1024, 1024 * 1024);
         let username = config.username.as_deref().filter(|s| !s.is_empty());
         let password = config.password.as_deref().filter(|s| !s.is_empty());
         if let (Some(u), Some(p)) = (username, password) {
