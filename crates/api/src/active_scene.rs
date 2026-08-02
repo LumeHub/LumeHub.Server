@@ -8,6 +8,7 @@ use serde::Deserialize;
 use store::{NewLayer, Store};
 
 use crate::error::ApiError;
+use crate::transition::TransitionQuery;
 use crate::types::{LayerResponse, SceneResponse};
 
 #[get("/scenes/active")]
@@ -31,6 +32,10 @@ pub async fn clear_active_scene(
     Ok(HttpResponse::NoContent().finish())
 }
 
+fn default_opacity() -> f32 {
+    1.0
+}
+
 #[derive(Deserialize)]
 struct AddLayerRequest {
     effect_id: String,
@@ -39,6 +44,8 @@ struct AddLayerRequest {
     blend_mode: BlendMode,
     #[serde(default)]
     params: HashMap<String, ParamValue>,
+    #[serde(default = "default_opacity")]
+    opacity: f32,
 }
 
 impl From<AddLayerRequest> for NewLayer {
@@ -48,6 +55,7 @@ impl From<AddLayerRequest> for NewLayer {
             zone_id: r.zone_id,
             blend_mode: r.blend_mode,
             params: r.params,
+            opacity: r.opacity,
         }
     }
 }
@@ -56,11 +64,12 @@ impl From<AddLayerRequest> for NewLayer {
 pub async fn set_active_scene(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     body: web::Json<Vec<AddLayerRequest>>,
 ) -> Result<impl Responder, ApiError> {
     let layers: Vec<NewLayer> = body.into_inner().into_iter().map(Into::into).collect();
     store.replace_active_layers(&layers).await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     let layers = store.get_active_layers().await?;
     Ok(HttpResponse::Ok().json(
         layers
@@ -74,6 +83,7 @@ pub async fn set_active_scene(
 pub async fn add_layer(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     body: web::Json<AddLayerRequest>,
 ) -> Result<impl Responder, ApiError> {
     let layer = store
@@ -84,7 +94,7 @@ pub async fn add_layer(
             &body.params,
         )
         .await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::Created().json(LayerResponse::from(layer)))
 }
 
@@ -94,12 +104,14 @@ struct PatchLayerRequest {
     enabled: Option<bool>,
     blend_mode: Option<BlendMode>,
     params: Option<HashMap<String, ParamValue>>,
+    opacity: Option<f32>,
 }
 
 #[patch("/scenes/active/layers/{id}")]
 pub async fn patch_layer(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     path: web::Path<String>,
     body: web::Json<PatchLayerRequest>,
 ) -> Result<impl Responder, ApiError> {
@@ -109,10 +121,14 @@ pub async fn patch_layer(
     let enabled = body.enabled.unwrap_or(current.enabled);
     let blend_mode = body.blend_mode.unwrap_or(current.blend_mode);
     let params = body.params.clone().unwrap_or(current.params);
-    let layer = store
+    store
         .update_active_layer(&id, zone_id, enabled, blend_mode, &params)
         .await?;
-    runtime.reload_active();
+    if let Some(opacity) = body.opacity {
+        store.update_active_layer_opacity(&id, opacity).await?;
+    }
+    let layer = store.get_active_layer(&id).await?;
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::Ok().json(LayerResponse::from(layer)))
 }
 
@@ -120,10 +136,34 @@ pub async fn patch_layer(
 pub async fn remove_layer(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
-    store.remove_active_layer(&path.into_inner()).await?;
-    runtime.reload_active();
+    let id = path.into_inner();
+    let spec = query.into_inner().resolve(runtime.as_ref());
+
+    if spec.is_instant() {
+        store.remove_active_layer(&id).await?;
+        runtime.reload_active_with(spec);
+        return Ok(HttpResponse::NoContent().finish());
+    }
+
+    // Fade-out: tween opacity to 0 in-place, then drop the row once the
+    // visible fade is done. Reload runs immediately so the LiveParam picks
+    // up the new target; the cleanup reload uses INSTANT to avoid stacking
+    // another scene crossfade on top of a layer that has already faded out.
+    store.update_active_layer_opacity(&id, 0.0).await?;
+    runtime.reload_active_with(spec);
+
+    let store = store.into_inner();
+    let runtime: Arc<dyn SceneRuntime> = web::Data::clone(&runtime).into_inner();
+    let fade_ms = spec.duration_ms as u64;
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(fade_ms)).await;
+        let _ = store.remove_active_layer(&id).await;
+        runtime.reload_active_with(domain::TransitionSpec::INSTANT);
+    });
+
     Ok(HttpResponse::NoContent().finish())
 }
 
@@ -136,10 +176,11 @@ struct ReorderRequest {
 pub async fn reorder_layers(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     body: web::Json<ReorderRequest>,
 ) -> Result<impl Responder, ApiError> {
     store.reorder_active_layers(&body.ordered_ids).await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::NoContent().finish())
 }
 
@@ -161,10 +202,11 @@ pub async fn save_active_scene(
 pub async fn load_scene_into_active(
     store: web::Data<Arc<Store>>,
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     path: web::Path<String>,
 ) -> Result<impl Responder, ApiError> {
     store.load_scene_into_active(&path.into_inner()).await?;
-    runtime.reload_active();
+    runtime.reload_active_with(query.into_inner().resolve(runtime.as_ref()));
     Ok(HttpResponse::NoContent().finish())
 }
 

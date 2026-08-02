@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use actix_web::{App, HttpServer, web};
 use application::{SceneRuntime, StateEventBus};
+use domain::TransitionSpec;
 use effects::load_builtins;
 use engine::EffectQueue;
 use settings::Settings;
@@ -31,8 +32,12 @@ async fn main() -> std::io::Result<()> {
 
     let strip_len = app_settings.led_controller.driver.pixel_count;
 
-    let (effect_queue, rx_effect_processor) =
-        EffectQueue::new(app_settings.led_controller.crossfade_ms);
+    let default_spec = TransitionSpec::new(
+        app_settings.transitions.default_fade_ms,
+        app_settings.transitions.default_curve,
+    );
+
+    let (effect_queue, rx_effect_processor) = EffectQueue::new(default_spec);
 
     let state_file = app_settings.state_dir.join("state.json");
     let initial_state = persistence::load(&state_file).unwrap_or_else(|e| {
@@ -95,8 +100,7 @@ async fn main() -> std::io::Result<()> {
     #[cfg(feature = "google")]
     let command_dispatcher = api_google::commands::CommandDispatcher::new();
 
-    let crossfade_frames = app_settings.led_controller.crossfade_ms as usize / 16;
-    engine::spawn(Box::new(led), rx_effect_processor, crossfade_frames);
+    engine::spawn(Box::new(led), rx_effect_processor);
 
     let ip_address = app_settings.server.ip_address;
     let port = app_settings.server.port;
@@ -125,7 +129,9 @@ async fn main() -> std::io::Result<()> {
             .configure(api::effects::config)
             .configure(api::events::config)
             .configure(api::zones::config)
-            // active_scene must precede scenes: /scenes/active must match before /scenes/{id}
+            // state_stack and active_scene must precede scenes: /scenes/active/* must
+            // match before the wildcard /scenes/{id}
+            .configure(api::state_stack::config)
             .configure(api::active_scene::config)
             .configure(api::scenes::config)
             .configure(api_legacy::config);

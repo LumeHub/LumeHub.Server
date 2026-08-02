@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::Parser;
 use config::{Config, ConfigError, Environment, File};
+use domain::TransitionCurve;
 use drivers::DriverConfig;
 use mqtt::MqttConfig;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,13 @@ pub struct LedControllerConfig {
     #[serde(flatten)]
     pub driver: DriverConfig,
     pub crossfade_ms: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct TransitionsConfig {
+    pub default_fade_ms: u32,
+    #[serde(default)]
+    pub default_curve: TransitionCurve,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -29,6 +37,7 @@ pub struct MdnsConfig {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Settings {
     pub led_controller: LedControllerConfig,
+    pub transitions: TransitionsConfig,
     pub server: ServerConfig,
     pub mdns: MdnsConfig,
     #[serde(default)]

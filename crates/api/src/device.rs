@@ -3,6 +3,8 @@ use application::{SceneRuntime, SceneSnapshot};
 use domain::Rgb;
 use serde::{Deserialize, Serialize};
 
+use crate::transition::TransitionQuery;
+
 #[derive(Serialize)]
 struct DeviceStateResponse {
     on: bool,
@@ -37,16 +39,18 @@ struct PatchStateRequest {
 #[patch("/device/state")]
 pub async fn patch_state(
     runtime: web::Data<dyn SceneRuntime>,
+    query: web::Query<TransitionQuery>,
     body: web::Json<PatchStateRequest>,
 ) -> impl Responder {
+    let spec = query.into_inner().resolve(runtime.as_ref());
     if let Some(on) = body.on {
-        runtime.set_on_off(on);
+        runtime.set_on_off_with(on, spec);
     }
     if let Some(brightness) = body.brightness {
-        runtime.set_brightness(brightness);
+        runtime.set_brightness_with(brightness, spec);
     }
     if let Some(color) = body.color {
-        runtime.set_color(color);
+        runtime.set_color_with(color, spec);
     }
     HttpResponse::Ok().json(DeviceStateResponse::from(runtime.snapshot()))
 }

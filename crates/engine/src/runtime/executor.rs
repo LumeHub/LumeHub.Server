@@ -1,22 +1,18 @@
 use super::{
     ActiveEffect, RenderCommand,
-    transition::{crossfade, transition_to_state},
+    transition::{blend, fade_to_solid, solid_frames},
 };
-use crate::Output;
-use domain::DeviceState;
+use crate::{FRAME_DURATION_MS, Output};
+use domain::{DeviceState, Rgb, TransitionSpec};
 use std::sync::mpsc::{Receiver, TryRecvError};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-const FRAME_DURATION: Duration = Duration::from_millis(16);
+const FRAME_DURATION: Duration = Duration::from_millis(FRAME_DURATION_MS as u64);
 
-pub fn spawn(
-    output: Box<dyn Output>,
-    cmd_rx: Receiver<RenderCommand>,
-    crossfade_frames: usize,
-) -> JoinHandle<()> {
+pub fn spawn(output: Box<dyn Output>, cmd_rx: Receiver<RenderCommand>) -> JoinHandle<()> {
     thread::spawn(move || {
-        let mut ex = Executor::new(output, crossfade_frames);
+        let mut ex = Executor::new(output);
 
         loop {
             let frame_start = Instant::now();
@@ -51,56 +47,67 @@ struct Executor {
     output: Box<dyn Output>,
     state: DeviceState,
     current: ActiveEffect,
-    crossfade_frames: usize,
 }
 
 impl Executor {
-    fn new(output: Box<dyn Output>, crossfade_frames: usize) -> Self {
+    fn new(output: Box<dyn Output>) -> Self {
         Self {
             output,
             state: DeviceState::default(),
             current: None,
-            crossfade_frames,
         }
     }
 
     fn handle(&mut self, cmd: RenderCommand) {
         match cmd {
-            RenderCommand::Execute(effect) => {
-                let from = self.output.pixels().to_vec();
-                let inner = effect.frames(self.output.pixels());
-                self.current = Some(crossfade(from, inner, self.crossfade_frames));
+            RenderCommand::Execute(effect, spec) => {
+                let to = effect.frames(self.output.pixels());
+                let from = self.take_from();
+                self.current = Some(blend(from, to, spec.frames(FRAME_DURATION_MS), spec.curve));
             }
             RenderCommand::Halt => self.current = None,
-            RenderCommand::SetBrightness(b) => {
+            RenderCommand::SetBrightness(b, spec) => {
                 self.state.brightness = b;
-                transition_to_state(
-                    &self.state,
-                    &mut self.current,
-                    &mut *self.output,
-                    self.crossfade_frames,
-                );
+                self.transition_to_state(spec);
             }
-            RenderCommand::SetOnOff(on) => {
+            RenderCommand::SetOnOff(on, spec) => {
                 self.state.on = on;
-                transition_to_state(
-                    &self.state,
-                    &mut self.current,
-                    &mut *self.output,
-                    self.crossfade_frames,
-                );
+                self.transition_to_state(spec);
             }
-            RenderCommand::SetColor(color) => {
+            RenderCommand::SetColor(color, spec) => {
                 self.state.color = color;
                 self.state.on = true;
-                transition_to_state(
-                    &self.state,
-                    &mut self.current,
-                    &mut *self.output,
-                    self.crossfade_frames,
-                );
+                self.transition_to_state(spec);
             }
         }
+    }
+
+    fn transition_to_state(&mut self, spec: TransitionSpec) {
+        let target = self.target_pixels();
+        let frames = spec.frames(FRAME_DURATION_MS);
+        if frames == 0 {
+            self.output.pixels_mut().copy_from_slice(&target);
+            self.output.show();
+            self.current = None;
+            return;
+        }
+        let from = self.take_from();
+        self.current = Some(fade_to_solid(from, target, frames, spec.curve));
+    }
+
+    fn take_from(&mut self) -> crate::FrameIter {
+        self.current
+            .take()
+            .unwrap_or_else(|| solid_frames(self.output.pixels().to_vec()))
+    }
+
+    fn target_pixels(&self) -> Vec<Rgb> {
+        let color = if self.state.on {
+            self.state.color.with_brightness(self.state.brightness)
+        } else {
+            Rgb::BLACK
+        };
+        vec![color; self.output.pixels().len()]
     }
 
     fn tick(&mut self) {

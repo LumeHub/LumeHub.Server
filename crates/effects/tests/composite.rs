@@ -27,6 +27,21 @@ fn full_layer(color: Rgb, mode: BlendMode, strip_len: usize) -> CompositeLayer {
         effect: Arc::new(Solid(color)),
         mode,
         zone: ZoneGradient::full_strip(strip_len),
+        opacity: Arc::new(LiveParam::new(1.0, f32::MAX)),
+    }
+}
+
+fn full_layer_with_opacity(
+    color: Rgb,
+    mode: BlendMode,
+    strip_len: usize,
+    opacity: f32,
+) -> CompositeLayer {
+    CompositeLayer {
+        effect: Arc::new(Solid(color)),
+        mode,
+        zone: ZoneGradient::full_strip(strip_len),
+        opacity: Arc::new(LiveParam::new(opacity, f32::MAX)),
     }
 }
 
@@ -78,6 +93,7 @@ fn zone_restricts_rendering_to_pixel_range() {
             effect: Arc::new(Solid(Rgb::new(255, 0, 0))),
             mode: BlendMode::Override,
             zone,
+            opacity: Arc::new(LiveParam::new(1.0, f32::MAX)),
         }],
         brightness: brightness(255.0),
         primary_color: primary(),
@@ -104,6 +120,7 @@ fn transition_extends_outside_logical_zone() {
             effect: Arc::new(Solid(Rgb::new(255, 0, 0))),
             mode: BlendMode::Override,
             zone,
+            opacity: Arc::new(LiveParam::new(1.0, f32::MAX)),
         }],
         brightness: brightness(255.0),
         primary_color: primary(),
@@ -154,11 +171,13 @@ fn adjacent_zones_blend_without_black() {
                 effect: Arc::new(Solid(Rgb::new(255, 0, 0))),
                 mode: BlendMode::Override,
                 zone: zone_a,
+                opacity: Arc::new(LiveParam::new(1.0, f32::MAX)),
             },
             CompositeLayer {
                 effect: Arc::new(Solid(Rgb::new(0, 0, 255))),
                 mode: BlendMode::Override,
                 zone: zone_b,
+                opacity: Arc::new(LiveParam::new(1.0, f32::MAX)),
             },
         ],
         brightness: brightness(255.0),
@@ -179,6 +198,131 @@ fn adjacent_zones_blend_without_black() {
             p
         );
     }
+}
+
+#[test]
+fn layer_opacity_zero_passes_through_base() {
+    let effect = CompositeEffect {
+        layers: vec![
+            full_layer(Rgb::new(255, 0, 0), BlendMode::Override, 4),
+            full_layer_with_opacity(Rgb::new(0, 0, 255), BlendMode::Override, 4, 0.0),
+        ],
+        brightness: brightness(255.0),
+        primary_color: primary(),
+    };
+    let frame = effect.frames(&[Rgb::BLACK; 4]).next().unwrap();
+    assert!(frame.iter().all(|p| *p == Rgb::new(255, 0, 0)));
+}
+
+#[test]
+fn layer_opacity_half_blends_with_base() {
+    let effect = CompositeEffect {
+        layers: vec![
+            full_layer(Rgb::new(0, 0, 0), BlendMode::Override, 4),
+            full_layer_with_opacity(Rgb::new(200, 0, 0), BlendMode::Override, 4, 0.5),
+        ],
+        brightness: brightness(255.0),
+        primary_color: primary(),
+    };
+    let frame = effect.frames(&[Rgb::BLACK; 4]).next().unwrap();
+    // Override at opacity 0.5 lerps base toward overlay halfway.
+    assert!(
+        frame
+            .iter()
+            .all(|p| p.r > 40 && p.r < 120 && p.g == 0 && p.b == 0)
+    );
+}
+
+#[test]
+fn layer_opacity_one_equals_full_strength() {
+    let with = CompositeEffect {
+        layers: vec![full_layer_with_opacity(
+            Rgb::new(123, 45, 67),
+            BlendMode::Override,
+            4,
+            1.0,
+        )],
+        brightness: brightness(255.0),
+        primary_color: primary(),
+    };
+    let without = CompositeEffect {
+        layers: vec![full_layer(Rgb::new(123, 45, 67), BlendMode::Override, 4)],
+        brightness: brightness(255.0),
+        primary_color: primary(),
+    };
+    assert_eq!(
+        with.frames(&[Rgb::BLACK; 4]).next().unwrap(),
+        without.frames(&[Rgb::BLACK; 4]).next().unwrap()
+    );
+}
+
+#[test]
+fn layer_opacity_scales_add_mode_contribution() {
+    let full = CompositeEffect {
+        layers: vec![
+            full_layer(Rgb::new(50, 0, 0), BlendMode::Override, 4),
+            full_layer(Rgb::new(100, 0, 0), BlendMode::Add, 4),
+        ],
+        brightness: brightness(255.0),
+        primary_color: primary(),
+    };
+    let dimmed = CompositeEffect {
+        layers: vec![
+            full_layer(Rgb::new(50, 0, 0), BlendMode::Override, 4),
+            full_layer_with_opacity(Rgb::new(100, 0, 0), BlendMode::Add, 4, 0.5),
+        ],
+        brightness: brightness(255.0),
+        primary_color: primary(),
+    };
+    let full_px = full.frames(&[Rgb::BLACK; 4]).next().unwrap()[0];
+    let dim_px = dimmed.frames(&[Rgb::BLACK; 4]).next().unwrap()[0];
+    assert!(
+        dim_px.r < full_px.r,
+        "opacity 0.5 should shrink Add contribution: full={} dim={}",
+        full_px.r,
+        dim_px.r
+    );
+}
+
+#[test]
+fn opacity_live_param_tween_ramps_overlay_across_frames() {
+    // speed=0.25 means 4 ticks to reach target 1.0 starting from 0.0.
+    let opacity = Arc::new(LiveParam::new(0.0, 0.25));
+    opacity.set(1.0);
+    let layer = CompositeLayer {
+        effect: Arc::new(Solid(Rgb::new(200, 0, 0))),
+        mode: BlendMode::Override,
+        zone: ZoneGradient::full_strip(1),
+        opacity: Arc::clone(&opacity),
+    };
+    let effect = CompositeEffect {
+        layers: vec![layer],
+        brightness: brightness(255.0),
+        primary_color: primary(),
+    };
+    let mut frames = effect.frames(&[Rgb::BLACK; 1]);
+
+    let r1 = frames.next().unwrap()[0].r;
+    let r2 = frames.next().unwrap()[0].r;
+    let r3 = frames.next().unwrap()[0].r;
+    let r4 = frames.next().unwrap()[0].r;
+    assert!(r1 < r2, "frame1 ({r1}) should be dimmer than frame2 ({r2})");
+    assert!(r2 < r3, "frame2 ({r2}) should be dimmer than frame3 ({r3})");
+    assert!(r3 < r4, "frame3 ({r3}) should be dimmer than frame4 ({r4})");
+    assert_eq!(r4, 200, "frame4 should reach full target");
+}
+
+#[test]
+fn opacity_live_param_set_speed_changes_tween_rate() {
+    let opacity = Arc::new(LiveParam::new(0.0, 0.1));
+    opacity.set(1.0);
+    // Tick once at speed 0.1: current = 0.1
+    opacity.tick();
+    assert!((opacity.get() - 0.1).abs() < 1e-5);
+    // Bump speed to 1.0; next tick snaps to target
+    opacity.set_speed(1.0);
+    opacity.tick();
+    assert_eq!(opacity.get(), 1.0);
 }
 
 #[test]

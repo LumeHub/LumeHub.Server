@@ -17,6 +17,7 @@ pub struct LayerRecord {
     pub params: HashMap<String, ParamValue>,
     pub enabled: bool,
     pub position: u32,
+    pub opacity: f32,
 }
 
 #[derive(FromRow)]
@@ -29,6 +30,7 @@ pub(super) struct LayerRow {
     pub params: String,
     pub enabled: i64,
     pub position: i64,
+    pub opacity: f64,
 }
 
 pub struct NewLayer {
@@ -36,6 +38,7 @@ pub struct NewLayer {
     pub zone_id: String,
     pub blend_mode: BlendMode,
     pub params: HashMap<String, ParamValue>,
+    pub opacity: f32,
 }
 
 pub(super) fn layer_from_row(row: LayerRow) -> Result<LayerRecord, StoreError> {
@@ -44,6 +47,7 @@ pub(super) fn layer_from_row(row: LayerRow) -> Result<LayerRecord, StoreError> {
         params: serde_json::from_str(&row.params)?,
         enabled: row.enabled != 0,
         position: row.position as u32,
+        opacity: row.opacity as f32,
         id: row.id,
         scene_id: row.scene_id,
         effect_id: row.effect_id,
@@ -62,7 +66,7 @@ pub(super) fn blend_mode_to_str(mode: BlendMode) -> &'static str {
 
 pub async fn get_layers(pool: &SqlitePool, scene_id: &str) -> Result<Vec<LayerRecord>, StoreError> {
     let rows: Vec<LayerRow> = sqlx::query_as::<_, LayerRow>(
-        "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position
+        "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity
          FROM scene_layers WHERE scene_id = ? ORDER BY position",
     )
     .bind(scene_id)
@@ -73,7 +77,7 @@ pub async fn get_layers(pool: &SqlitePool, scene_id: &str) -> Result<Vec<LayerRe
 
 pub async fn get_layer(pool: &SqlitePool, id: &str) -> Result<LayerRecord, StoreError> {
     let row: Option<LayerRow> = sqlx::query_as::<_, LayerRow>(
-        "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position
+        "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity
          FROM scene_layers WHERE id = ?",
     )
     .bind(id)
@@ -88,7 +92,7 @@ pub async fn get_layer_in_scene(
     scene_id: &str,
 ) -> Result<LayerRecord, StoreError> {
     let row: Option<LayerRow> = sqlx::query_as::<_, LayerRow>(
-        "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position
+        "SELECT id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity
          FROM scene_layers WHERE id = ? AND scene_id = ?",
     )
     .bind(id)
@@ -166,6 +170,27 @@ pub async fn update_layer(
     get_layer(pool, id).await
 }
 
+pub async fn update_layer_opacity(
+    pool: &SqlitePool,
+    id: &str,
+    scene_id: &str,
+    opacity: f32,
+) -> Result<LayerRecord, StoreError> {
+    let rows_affected =
+        sqlx::query("UPDATE scene_layers SET opacity = ? WHERE id = ? AND scene_id = ?")
+            .bind(opacity as f64)
+            .bind(id)
+            .bind(scene_id)
+            .execute(pool)
+            .await?
+            .rows_affected();
+
+    if rows_affected == 0 {
+        return Err(StoreError::NotFound);
+    }
+    get_layer(pool, id).await
+}
+
 pub async fn remove_layer(pool: &SqlitePool, id: &str, scene_id: &str) -> Result<(), StoreError> {
     let rows_affected = sqlx::query("DELETE FROM scene_layers WHERE id = ? AND scene_id = ?")
         .bind(id)
@@ -236,7 +261,7 @@ pub(super) async fn copy_layers(
         .collect::<Result<Vec<_>, _>>()?;
 
     sqlx::QueryBuilder::new(
-        "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position) ",
+        "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity) ",
     )
     .push_values(&entries, |mut b, (id, layer, params)| {
         b.push_bind(id.as_str())
@@ -246,7 +271,8 @@ pub(super) async fn copy_layers(
             .push_bind(blend_mode_to_str(layer.blend_mode))
             .push_bind(params.as_str())
             .push_bind(layer.enabled as i64)
-            .push_bind(layer.position as i64);
+            .push_bind(layer.position as i64)
+            .push_bind(layer.opacity as f64);
     })
     .build()
     .execute(pool)

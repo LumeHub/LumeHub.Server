@@ -13,6 +13,7 @@ pub struct LayerResponse {
     pub params: HashMap<String, ParamValue>,
     pub enabled: bool,
     pub position: u32,
+    pub opacity: f32,
 }
 
 impl From<LayerRecord> for LayerResponse {
@@ -25,6 +26,7 @@ impl From<LayerRecord> for LayerResponse {
             params: r.params,
             enabled: r.enabled,
             position: r.position,
+            opacity: r.opacity,
         }
     }
 }

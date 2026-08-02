@@ -6,12 +6,12 @@ use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "google")]
 use chrono::Utc;
-use engine::{EffectQueue, RenderCommand};
+use engine::EffectQueue;
 
 #[cfg(feature = "google")]
 use api_google::effects::{ColorLoop, Sleep, Wake};
 use application::{SceneRuntime, SceneSnapshot, StateEventBus};
-use domain::Rgb;
+use domain::{Rgb, TransitionSpec};
 use effects::{BuiltinEffect, LiveParam};
 use persistence::PersistedState;
 use store::Store;
@@ -28,6 +28,7 @@ pub struct RenderTaskRuntime {
     pub(crate) builtins: Arc<HashMap<String, BuiltinEffect>>,
     pub(crate) primary_color: Arc<LiveParam<Rgb>>,
     pub(crate) strip_len: usize,
+    pub(crate) live_opacities: Arc<Mutex<HashMap<String, Arc<LiveParam<f32>>>>>,
 }
 
 impl RenderTaskRuntime {
@@ -55,6 +56,7 @@ impl RenderTaskRuntime {
             builtins: Arc::new(builtins.into_iter().map(|b| (b.id(), b)).collect()),
             primary_color: Arc::new(LiveParam::new(initial.color, color_speed)),
             strip_len,
+            live_opacities: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -76,35 +78,39 @@ impl RenderTaskRuntime {
 }
 
 impl SceneRuntime for RenderTaskRuntime {
-    fn set_color(&self, color: Rgb) {
+    fn default_spec(&self) -> TransitionSpec {
+        self.queue.default_spec()
+    }
+
+    fn set_color_with(&self, color: Rgb, spec: TransitionSpec) {
         self.primary_color.set(color);
         self.with_state(|state, queue| {
             state.color = color;
             state.on = true;
             if matches!(state.scene, ActiveScene::Idle) {
-                queue.send(RenderCommand::SetColor(color));
+                queue.set_color_with(color, spec);
             }
         });
     }
 
-    fn set_brightness(&self, brightness: u8) {
+    fn set_brightness_with(&self, brightness: u8, spec: TransitionSpec) {
         self.with_state(|state, queue| {
             state.brightness = brightness;
             if let ActiveScene::Running { brightness: param } = &state.scene {
                 param.set(brightness as f32);
             } else {
-                queue.send(RenderCommand::SetBrightness(brightness));
+                queue.set_brightness_with(brightness, spec);
             }
         });
     }
 
-    fn set_on_off(&self, on: bool) {
+    fn set_on_off_with(&self, on: bool, spec: TransitionSpec) {
         self.with_state(|state, queue| {
             state.on = on;
             if let ActiveScene::Running { brightness } = &state.scene {
                 brightness.set(if on { state.brightness as f32 } else { 0.0 });
             } else {
-                queue.send(RenderCommand::SetOnOff(on));
+                queue.set_on_off_with(on, spec);
             }
         });
     }
@@ -112,7 +118,7 @@ impl SceneRuntime for RenderTaskRuntime {
     fn halt(&self) {
         self.with_state(|state, queue| {
             state.scene = ActiveScene::Idle;
-            queue.send(RenderCommand::Halt);
+            queue.halt();
         });
     }
 
@@ -120,7 +126,7 @@ impl SceneRuntime for RenderTaskRuntime {
         self.with_state(|state, queue| {
             let on = state.on;
             state.scene = ActiveScene::Idle;
-            queue.send(RenderCommand::SetOnOff(on));
+            queue.set_on_off(on);
         });
     }
 
@@ -184,8 +190,8 @@ impl SceneRuntime for RenderTaskRuntime {
         });
     }
 
-    fn reload_active(&self) {
-        SceneReload::from_runtime(self).spawn();
+    fn reload_active_with(&self, spec: TransitionSpec) {
+        SceneReload::from_runtime(self, spec).spawn();
     }
 
     fn snapshot(&self) -> SceneSnapshot {

@@ -2,6 +2,7 @@ use sqlx::SqlitePool;
 use uuid::Uuid;
 
 use crate::StoreError;
+use crate::stack::StackLayer;
 
 use super::layers::{NewLayer, blend_mode_to_str, clear_layers, copy_layers};
 use super::scenes::{SceneRecord, create, get_one};
@@ -29,7 +30,7 @@ pub async fn replace_active_layers(
 
     if !entries.is_empty() {
         sqlx::QueryBuilder::new(
-            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position) ",
+            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity) ",
         )
         .push_values(&entries, |mut b, (id, layer, params, pos)| {
             b.push_bind(id.as_str())
@@ -39,7 +40,8 @@ pub async fn replace_active_layers(
                 .push_bind(blend_mode_to_str(layer.blend_mode))
                 .push_bind(params.as_str())
                 .push_bind(1i64)
-                .push_bind(*pos);
+                .push_bind(*pos)
+                .push_bind(layer.opacity as f64);
         })
         .build()
         .execute(&mut *tx)
@@ -68,5 +70,50 @@ pub async fn overwrite_from_active(pool: &SqlitePool, id: &str) -> Result<(), St
     }
     clear_layers(pool, id).await?;
     copy_layers(pool, super::ACTIVE_SCENE_ID, id).await?;
+    Ok(())
+}
+
+pub async fn restore_active_from_stack(
+    pool: &SqlitePool,
+    layers: &[StackLayer],
+) -> Result<(), StoreError> {
+    let entries = layers
+        .iter()
+        .enumerate()
+        .map(|(pos, l)| {
+            serde_json::to_string(&l.params)
+                .map(|params| (Uuid::new_v4().to_string(), l, params, pos as i64))
+                .map_err(StoreError::from)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut tx = pool.begin().await?;
+
+    sqlx::query("DELETE FROM scene_layers WHERE scene_id = ?")
+        .bind(super::ACTIVE_SCENE_ID)
+        .execute(&mut *tx)
+        .await?;
+
+    if !entries.is_empty() {
+        sqlx::QueryBuilder::new(
+            "INSERT INTO scene_layers (id, scene_id, effect_id, zone_id, blend_mode, params, enabled, position, opacity) ",
+        )
+        .push_values(&entries, |mut b, (id, layer, params, pos)| {
+            b.push_bind(id.as_str())
+                .push_bind(super::ACTIVE_SCENE_ID)
+                .push_bind(layer.effect_id.as_str())
+                .push_bind(layer.zone_id.as_str())
+                .push_bind(blend_mode_to_str(layer.blend_mode))
+                .push_bind(params.as_str())
+                .push_bind(layer.enabled as i64)
+                .push_bind(*pos)
+                .push_bind(layer.opacity as f64);
+        })
+        .build()
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
     Ok(())
 }

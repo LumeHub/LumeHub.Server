@@ -1,10 +1,10 @@
 use crate::Effect;
-use domain::Rgb;
+use domain::{Rgb, TransitionSpec};
 
 pub enum RenderCommand {
-    Execute(Box<dyn Effect + Send>),
-    SetBrightness(u8),
-    SetOnOff(bool),
-    SetColor(Rgb),
+    Execute(Box<dyn Effect + Send>, TransitionSpec),
+    SetBrightness(u8, TransitionSpec),
+    SetOnOff(bool, TransitionSpec),
+    SetColor(Rgb, TransitionSpec),
     Halt,
 }

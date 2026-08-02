@@ -67,6 +67,10 @@ impl<T: Interpolatable> LiveParam<T> {
         self.inner.write().unwrap().target = target;
     }
 
+    pub fn set_speed(&self, speed: f32) {
+        self.inner.write().unwrap().speed = speed;
+    }
+
     pub fn set_immediate(&self, value: T) {
         let mut inner = self.inner.write().unwrap();
         inner.current = value.clone();
